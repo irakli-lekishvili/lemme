@@ -3,6 +3,19 @@
 import { Bookmark, ChevronLeft, ChevronRight, Download, Heart, MoreHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+// Convert Supabase storage URLs to local proxy to avoid Kong browser issues
+function getImageUrl(src: string, id: string | number): string {
+  if (src.includes("picsum")) {
+    return `${src}?random=${id}`;
+  }
+  // Extract the path from Supabase storage URL and use local proxy
+  const match = src.match(/\/storage\/v1\/object\/public\/images\/(.+)$/);
+  if (match) {
+    return `/api/images/${match[1]}`;
+  }
+  return src;
+}
+
 export type ImageCategory = {
   name: string;
   slug: string;
@@ -109,7 +122,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={selectedImage.src.includes("picsum") ? `${selectedImage.src}?random=${selectedImage.id}` : selectedImage.src}
+              src={getImageUrl(selectedImage.src, selectedImage.id)}
               alt={selectedImage.title || `Artwork ${selectedImage.id}`}
               className="max-w-full max-h-[85vh] object-contain rounded-xl"
             />
@@ -173,7 +186,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={item.src.includes("picsum") ? `${item.src}?random=${item.id}` : item.src}
+            src={getImageUrl(item.src, item.id)}
             alt={item.title || `Artwork ${item.id}`}
             className="w-full h-full object-cover"
             loading="lazy"

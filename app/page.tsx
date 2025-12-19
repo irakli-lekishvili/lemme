@@ -135,7 +135,7 @@ export default async function Home({ searchParams }: { searchParams: SearchParam
         <div className="max-w-[1800px] mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-text-muted">
-              © 2024 Lemme.Love. All rights reserved.
+              © {new Date().getFullYear()} Lemme.Love. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
               <Link href="/terms" className="text-sm text-text-muted hover:text-text-primary transition-colors">
