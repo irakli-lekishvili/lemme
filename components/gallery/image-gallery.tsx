@@ -149,12 +149,13 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
 
   return (
     <div className="break-inside-avoid group">
-      <button
-        type="button"
-        onClick={onExpand}
-        className="image-card card-hover relative w-full text-left"
-      >
-        <div className={`${heightClass} bg-bg-base`}>
+      <div className="image-card card-hover relative w-full">
+        {/* Clickable image area */}
+        <button
+          type="button"
+          className={`${heightClass} bg-bg-base cursor-pointer w-full`}
+          onClick={onExpand}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={`${item.src}?random=${item.id}`}
@@ -162,12 +163,12 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
             className="w-full h-full object-cover"
             loading="lazy"
           />
-        </div>
+        </button>
 
         {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
           {/* Top Actions */}
-          <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
             <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
               <Bookmark className="w-4 h-4 text-text-primary" />
             </button>
@@ -177,7 +178,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
           </div>
 
           {/* Bottom Info */}
-          <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-auto">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="avatar w-7 h-7" />
@@ -195,7 +196,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
             </div>
           </div>
         </div>
-      </button>
+      </div>
     </div>
   );
 }
