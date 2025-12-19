@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 type BookmarksContextType = {
   bookmarkedIds: Set<string>;
   isLoading: boolean;
+  isAuthenticated: boolean;
   toggleBookmark: (postId: string) => Promise<void>;
   isBookmarked: (postId: string) => boolean;
 };
@@ -84,7 +85,7 @@ export function BookmarksProvider({
 
   return (
     <BookmarksContext.Provider
-      value={{ bookmarkedIds, isLoading, toggleBookmark, isBookmarked }}
+      value={{ bookmarkedIds, isLoading, isAuthenticated: !!userId, toggleBookmark, isBookmarked }}
     >
       {children}
     </BookmarksContext.Provider>

@@ -1,6 +1,8 @@
 "use client";
 
-import { Bookmark, ChevronLeft, ChevronRight, Download, Heart, MoreHorizontal, X } from "lucide-react";
+import { useBookmarks } from "@/components/providers/bookmarks-provider";
+import { Bookmark, ChevronLeft, ChevronRight, Heart, MoreHorizontal, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 // Convert Supabase storage URLs to local proxy to avoid Kong browser issues
@@ -130,19 +132,11 @@ export function ImageGallery({ images }: ImageGalleryProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="avatar w-8 h-8" />
-                  <span className="text-sm font-medium text-text-primary">user_{selectedImage.id}</span>
+                  <span className="text-sm font-medium text-text-primary">Anonymous</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <button type="button" className="flex items-center gap-1.5 text-text-primary hover:text-primary-400 transition-colors">
-                    <Heart className="w-5 h-5" />
-                    <span className="text-sm font-medium">{selectedImage.likes}</span>
-                  </button>
-                  <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
-                    <Bookmark className="w-5 h-5 text-text-primary" />
-                  </button>
-                  <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
-                    <Download className="w-5 h-5 text-text-primary" />
-                  </button>
+                  <LikeButton postId={String(selectedImage.id)} likes={selectedImage.likes} size="lg" />
+                  <BookmarkButton postId={String(selectedImage.id)} size="lg" />
                 </div>
               </div>
             </div>
@@ -164,6 +158,58 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         </button>
       </div>
     </>
+  );
+}
+
+function LikeButton({ postId, likes, size = "sm" }: { postId: string; likes: number; size?: "sm" | "lg" }) {
+  const { isAuthenticated } = useBookmarks();
+  const router = useRouter();
+  const iconSize = size === "lg" ? "w-5 h-5" : "w-4 h-4";
+  const textSize = size === "lg" ? "text-sm" : "text-xs";
+  const gap = size === "lg" ? "gap-1.5" : "gap-1";
+
+  return (
+    <button
+      type="button"
+      className={`flex items-center ${gap} text-text-primary hover:text-primary-400 transition-colors`}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!isAuthenticated) {
+          router.push("/login");
+          return;
+        }
+        // TODO: implement like toggle
+      }}
+    >
+      <Heart className={iconSize} />
+      <span className={`${textSize} font-medium`}>{likes}</span>
+    </button>
+  );
+}
+
+function BookmarkButton({ postId, size = "sm" }: { postId: string; size?: "sm" | "lg" }) {
+  const { isBookmarked, toggleBookmark, isAuthenticated } = useBookmarks();
+  const router = useRouter();
+  const bookmarked = isBookmarked(postId);
+  const iconSize = size === "lg" ? "w-5 h-5" : "w-4 h-4";
+
+  return (
+    <button
+      type="button"
+      className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!isAuthenticated) {
+          router.push("/login");
+          return;
+        }
+        toggleBookmark(postId);
+      }}
+    >
+      <Bookmark
+        className={`${iconSize} ${bookmarked ? "fill-primary-400 text-primary-400" : "text-text-primary"}`}
+      />
+    </button>
   );
 }
 
@@ -217,9 +263,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
           {/* Top Actions */}
           <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
-            <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
-              <Bookmark className="w-4 h-4 text-text-primary" />
-            </button>
+            <BookmarkButton postId={String(item.id)} />
             <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
               <MoreHorizontal className="w-4 h-4 text-text-primary" />
             </button>
@@ -230,17 +274,9 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="avatar w-7 h-7" />
-                <span className="text-sm font-medium text-text-primary">user_{item.id}</span>
+                <span className="text-sm font-medium text-text-primary">Anonymous</span>
               </div>
-              <div className="flex items-center gap-3">
-                <button type="button" className="flex items-center gap-1 text-text-primary hover:text-primary-400 transition-colors">
-                  <Heart className="w-4 h-4" />
-                  <span className="text-xs font-medium">{item.likes}</span>
-                </button>
-                <button type="button" className="text-text-primary hover:text-primary-400 transition-colors">
-                  <Download className="w-4 h-4" />
-                </button>
-              </div>
+              <LikeButton postId={String(item.id)} likes={item.likes} />
             </div>
           </div>
         </div>

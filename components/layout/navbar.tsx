@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Bookmark, Search, Settings, Sparkles, Zap } from "lucide-react";
+import { Bookmark, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { UserNav } from "../auth/user-nav";
 
