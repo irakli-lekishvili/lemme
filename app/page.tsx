@@ -116,15 +116,6 @@ export default async function Home({ searchParams }: { searchParams: SearchParam
 
       {/* Main Content */}
       <main className="pt-24 pb-12">
-        {/* Tabs */}
-        <div className="flex justify-center mb-6">
-          <div className="flex items-center gap-1 p-1 bg-bg-elevated rounded-xl">
-            <button type="button" className="tab tab-active">For You</button>
-            <button type="button" className="tab">Following</button>
-            <button type="button" className="tab">Trending</button>
-          </div>
-        </div>
-
         {/* Category Filter */}
         {categories.length > 0 && (
           <div className="max-w-[1800px] mx-auto px-6 mb-6">
