@@ -11,22 +11,6 @@ type Category = {
   color: string | null;
 };
 
-// Sample data for fallback/demo
-const sampleImages: ImageItem[] = [
-  { id: 1, src: "https://picsum.photos/400/600", likes: 234, height: "tall" },
-  { id: 2, src: "https://picsum.photos/400/300", likes: 89, height: "short" },
-  { id: 3, src: "https://picsum.photos/400/400", likes: 567, height: "medium" },
-  { id: 4, src: "https://picsum.photos/400/500", likes: 123, height: "tall" },
-  { id: 5, src: "https://picsum.photos/400/350", likes: 445, height: "short" },
-  { id: 6, src: "https://picsum.photos/400/450", likes: 78, height: "medium" },
-  { id: 7, src: "https://picsum.photos/400/550", likes: 901, height: "tall" },
-  { id: 8, src: "https://picsum.photos/400/320", likes: 234, height: "short" },
-  { id: 9, src: "https://picsum.photos/400/480", likes: 156, height: "medium" },
-  { id: 10, src: "https://picsum.photos/400/600", likes: 678, height: "tall" },
-  { id: 11, src: "https://picsum.photos/400/380", likes: 345, height: "short" },
-  { id: 12, src: "https://picsum.photos/400/420", likes: 89, height: "medium" },
-];
-
 async function getCategories(): Promise<Category[]> {
   try {
     const supabase = await createClient();
@@ -96,9 +80,9 @@ async function getPosts(categorySlug?: string): Promise<ImageItem[]> {
       }));
     }
   } catch {
-    // Database not set up yet, use sample images
+    // Database not set up yet
   }
-  return sampleImages;
+  return [];
 }
 
 type SearchParams = Promise<{ category?: string }>;
