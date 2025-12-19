@@ -6,9 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format .",
+    "format:fix": "biome format --write .",
+    "studio": "open http://127.0.0.1:54323",
+    "generate-supabase-types": "npx supabase@latest gen types typescript --local > database.types.ts",
+    "dev:migrate": "npx supabase@latest migration up",
+    "seed": "tsx scripts/db-seed.ts",
+    "supabase": "npx supabase@latest start"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.89.0",
     "lucide-react": "^0.562.0",
     "next": "16.1.0",
     "react": "19.2.3",
