@@ -13,6 +13,11 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Convert Supabase storage URLs to local proxy to avoid Kong browser issues
 function getImageUrl(src: string, id: string | number): string {
@@ -267,28 +272,29 @@ function BookmarkButton({ postId }: { postId: string }) {
 }
 
 function ShareButton({ postId }: { postId: string }) {
-  const handleShare = async () => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
     const url = `${window.location.origin}/post/${postId}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ url });
-      } catch {
-        // User cancelled or share failed
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-    }
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <button
-      type="button"
-      className="p-1 hover:opacity-70 transition-opacity"
-      onClick={handleShare}
-      aria-label="Share"
-    >
-      <Forward className="w-6 h-6 text-text-primary" />
-    </button>
+    <Tooltip open={copied}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="p-1 hover:opacity-70 transition-opacity"
+          onClick={handleCopy}
+          aria-label="Copy link"
+        >
+          <Forward className="w-6 h-6 text-text-primary" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>Copied!</TooltipContent>
+    </Tooltip>
   );
 }
 
