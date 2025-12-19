@@ -5,6 +5,11 @@ import { useLikes } from "@/components/providers/likes-provider";
 import { useReports } from "@/components/providers/reports-provider";
 import { ReportModal } from "./report-modal";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Bookmark,
   Flag,
   Forward,
@@ -13,18 +18,11 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
-// Convert Supabase storage URLs to local proxy to avoid Kong browser issues
-function getImageUrl(src: string, id: string | number): string {
+function getImageUrl(src: string, id: string): string {
   if (src.includes("picsum")) {
     return `${src}?random=${id}`;
   }
-  // Extract the path from Supabase storage URL and use local proxy
   const match = src.match(/\/storage\/v1\/object\/public\/images\/(.+)$/);
   if (match) {
     return `/api/images/${match[1]}`;
@@ -32,170 +30,102 @@ function getImageUrl(src: string, id: string | number): string {
   return src;
 }
 
-export type TimelineCategory = {
-  name: string;
-  slug: string;
-  color: string | null;
-};
-
-export type TimelineItem = {
-  id: string | number;
-  src: string;
-  likes: number;
-  title?: string;
-  description?: string;
-  user_id?: string;
-  short_id?: string;
-  categories?: TimelineCategory[];
-  created_at?: string;
-};
-
-interface TimelineGalleryProps {
-  posts: TimelineItem[];
-}
-
-export function TimelineGallery({ posts }: TimelineGalleryProps) {
-  return (
-    <div className="max-w-[470px] mx-auto">
-      <div className="flex flex-col gap-4">
-        {posts.map((post) => (
-          <TimelinePost key={post.id} post={post} />
-        ))}
-      </div>
-
-      {/* Load More */}
-      {posts.length > 0 && (
-        <div className="flex justify-center mt-8 mb-4">
-          <button type="button" className="btn btn-secondary px-8 py-3">
-            Load More
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TimelinePost({ post }: { post: TimelineItem }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
-
-  return (
-    <article className="bg-bg-elevated border border-border-subtle rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="avatar w-8 h-8" />
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-text-primary">
-              Anonymous
-            </span>
-            {post.categories && post.categories.length > 0 && (
-              <span className="text-xs text-text-muted">
-                {post.categories[0].name}
-              </span>
-            )}
-          </div>
-        </div>
-        <MoreOptionsMenu postId={String(post.id)} />
-      </div>
-
-      {/* Image */}
-      <div className="relative bg-bg-base aspect-square">
-        {!imageLoaded && (
-          <div className="absolute inset-0 animate-pulse bg-bg-hover" />
-        )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={getImageUrl(post.src, post.id)}
-          alt={post.title || `Post ${post.id}`}
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
-            imageLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          loading="lazy"
-          onLoad={() => setImageLoaded(true)}
-        />
-      </div>
-
-      {/* Actions */}
-      <div className="px-4 pt-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <LikeButton postId={String(post.id)} />
-            <ShareButton postId={post.short_id || String(post.id)} />
-          </div>
-          <BookmarkButton postId={String(post.id)} />
-        </div>
-      </div>
-
-      {/* Like Count */}
-      <div className="px-4 pt-2">
-        <LikeCount postId={String(post.id)} initialLikes={post.likes} />
-      </div>
-
-      {/* Caption */}
-      {(post.title || post.description) && (
-        <div className="px-4 pt-2">
-          {post.title && (
-            <p className="text-sm text-text-primary">
-              <span className="font-semibold">Anonymous</span>{" "}
-              <span className="text-text-secondary">{post.title}</span>
-            </p>
-          )}
-          {post.description && (
-            <p className="text-sm text-text-muted mt-1">{post.description}</p>
-          )}
-        </div>
-      )}
-
-      {/* Categories as tags */}
-      {post.categories && post.categories.length > 0 && (
-        <div className="px-4 pt-2 flex flex-wrap gap-1">
-          {post.categories.map((cat) => (
-            <span
-              key={cat.slug}
-              className="text-xs text-primary-400 hover:text-primary-300 cursor-pointer"
-            >
-              #{cat.slug}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Timestamp */}
-      <div className="px-4 pt-2 pb-4">
-        <time className="text-[10px] text-text-muted uppercase tracking-wide">
-          {formatTimeAgo(post.created_at)}
-        </time>
-      </div>
-    </article>
-  );
-}
-
-function formatTimeAgo(dateString?: string): string {
-  if (!dateString) return "Recently";
-
+function formatDate(dateString: string): string {
   const date = new Date(dateString);
-  const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  if (diffInSeconds < 60) return "Just now";
-  if (diffInSeconds < 3600) {
-    const minutes = Math.floor(diffInSeconds / 60);
-    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
-  }
-  if (diffInSeconds < 86400) {
-    const hours = Math.floor(diffInSeconds / 3600);
-    return `${hours} hour${hours > 1 ? "s" : ""} ago`;
-  }
-  if (diffInSeconds < 604800) {
-    const days = Math.floor(diffInSeconds / 86400);
-    return `${days} day${days > 1 ? "s" : ""} ago`;
-  }
-
   return date.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
-    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    year: "numeric",
   });
+}
+
+type PostData = {
+  id: string;
+  image_url: string;
+  likes_count: number;
+  title: string | null;
+  description: string | null;
+  user_id: string | null;
+  created_at: string;
+  short_id: string | null;
+};
+
+interface PostDetailProps {
+  post: PostData;
+}
+
+export function PostDetail({ post }: PostDetailProps) {
+  return (
+    <div className="bg-bg-elevated border border-border-subtle rounded-xl overflow-hidden">
+      {/* Desktop layout: side by side */}
+      <div className="flex flex-col md:flex-row">
+        {/* Image */}
+        <div className="bg-bg-base md:flex-1 md:max-w-[600px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={getImageUrl(post.image_url, post.id)}
+            alt={post.title || `Post ${post.id}`}
+            className="w-full h-auto object-contain"
+          />
+        </div>
+
+        {/* Details sidebar */}
+        <div className="md:w-[335px] flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
+            <div className="flex items-center gap-3">
+              <div className="avatar w-8 h-8" />
+              <span className="text-sm font-semibold text-text-primary">
+                Anonymous
+              </span>
+            </div>
+            <MoreOptionsMenu postId={post.id} />
+          </div>
+
+          {/* Content area */}
+          <div className="flex-1 px-4 py-4 overflow-y-auto">
+            {/* Caption */}
+            {(post.title || post.description) && (
+              <div className="mb-4">
+                {post.title && (
+                  <p className="text-sm text-text-primary mb-1">
+                    <span className="font-semibold">Anonymous</span>{" "}
+                    <span className="text-text-secondary">{post.title}</span>
+                  </p>
+                )}
+                {post.description && (
+                  <p className="text-sm text-text-muted">{post.description}</p>
+                )}
+              </div>
+            )}
+
+            {/* Date */}
+            <p className="text-xs text-text-muted">
+              {formatDate(post.created_at)}
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="border-t border-border-subtle">
+            <div className="px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <LikeButton postId={post.id} />
+                  <ShareButton postId={post.short_id || post.id} />
+                </div>
+                <BookmarkButton postId={post.id} />
+              </div>
+            </div>
+
+            {/* Like count */}
+            <div className="px-4 pb-4">
+              <LikeCount postId={post.id} initialLikes={post.likes_count} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function LikeButton({ postId }: { postId: string }) {

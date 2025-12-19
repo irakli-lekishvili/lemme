@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -85,6 +86,9 @@ export async function POST(request: Request) {
     .from("images")
     .getPublicUrl(fileName);
 
+  // Generate short ID for user-friendly URLs (8 chars)
+  const short_id = nanoid(8);
+
   // Create post record
   const { data: post, error: postError } = await supabase
     .from("posts")
@@ -94,6 +98,7 @@ export async function POST(request: Request) {
       description: description || null,
       image_url: urlData.publicUrl,
       storage_path: fileName,
+      short_id,
     })
     .select()
     .single();
