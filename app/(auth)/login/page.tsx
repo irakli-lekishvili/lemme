@@ -1,5 +1,6 @@
 "use client";
 
+import { LavaLamp } from "@/components/ui/lava-lamp";
 import { createClient } from "@/lib/supabase/client";
 import { Mail } from "lucide-react";
 import Link from "next/link";
@@ -51,8 +52,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-bg-base flex items-center justify-center px-4 relative">
+      <LavaLamp />
+
+      {/* Logo */}
+      <Link href="/" className="absolute top-6 left-6 z-10 text-xl font-bold text-text-primary tracking-tight hover:opacity-80 transition-opacity">
+        LEMME<span className="text-primary-500">.</span>LOVE
+      </Link>
+
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-text-primary mb-2">
             Welcome back
@@ -62,7 +70,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="bg-bg-card rounded-2xl p-8 border border-border-subtle">
+        <div className="bg-bg-card/90 backdrop-blur-sm rounded-2xl p-8 border border-border-subtle">
           {/* Google Login */}
           <button
             type="button"

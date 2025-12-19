@@ -1,9 +1,9 @@
 "use client";
 
+import { LavaLamp } from "@/components/ui/lava-lamp";
 import { createClient } from "@/lib/supabase/client";
 import { Mail } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function SignupPage() {
@@ -13,7 +13,6 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   const handleEmailSignup = async (e: React.FormEvent) => {
@@ -68,9 +67,16 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
-        <div className="w-full max-w-md text-center">
-          <div className="bg-bg-card rounded-2xl p-8 border border-border-subtle">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center px-4 relative">
+        <LavaLamp />
+
+        {/* Logo */}
+        <Link href="/" className="absolute top-6 left-6 z-10 text-xl font-bold text-text-primary tracking-tight hover:opacity-80 transition-opacity">
+          LEMME<span className="text-primary-500">.</span>LOVE
+        </Link>
+
+        <div className="w-full max-w-md text-center relative z-10">
+          <div className="bg-bg-card/90 backdrop-blur-sm rounded-2xl p-8 border border-border-subtle">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-success-500/10 flex items-center justify-center">
               <Mail className="w-8 h-8 text-success-400" />
             </div>
@@ -88,8 +94,15 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-bg-base flex items-center justify-center px-4 relative">
+      <LavaLamp />
+
+      {/* Logo */}
+      <Link href="/" className="absolute top-6 left-6 z-10 text-xl font-bold text-text-primary tracking-tight hover:opacity-80 transition-opacity">
+        LEMME<span className="text-primary-500">.</span>LOVE
+      </Link>
+
+      <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-text-primary mb-2">
             Create an account
@@ -99,7 +112,7 @@ export default function SignupPage() {
           </p>
         </div>
 
-        <div className="bg-bg-card rounded-2xl p-8 border border-border-subtle">
+        <div className="bg-bg-card/90 backdrop-blur-sm rounded-2xl p-8 border border-border-subtle">
           {/* Google Signup */}
           <button
             type="button"
