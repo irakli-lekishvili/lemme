@@ -10,7 +10,7 @@ export async function Navbar() {
   } = await supabase.auth.getUser();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border-subtle">
+    <nav className="fixed top-0 left-0 right-0 z-50 !bg-[#141414] border-b border-border-subtle">
       <div className="max-w-[1800px] mx-auto px-6 h-16 flex items-center justify-between">
         {/* Left: Logo & Nav */}
         <div className="flex items-center gap-8">
