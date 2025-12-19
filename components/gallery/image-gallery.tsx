@@ -1,0 +1,201 @@
+"use client";
+
+import { Bookmark, ChevronLeft, ChevronRight, Download, Heart, MoreHorizontal, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+type ImageItem = { id: number; src: string; likes: number; height: string };
+
+interface ImageGalleryProps {
+  images: ImageItem[];
+}
+
+export function ImageGallery({ images }: ImageGalleryProps) {
+  const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const currentIndex = selectedImage ? images.findIndex((img) => img.id === selectedImage.id) : -1;
+
+  useEffect(() => {
+    if (selectedImage && modalRef.current) {
+      modalRef.current.focus();
+    }
+  }, [selectedImage]);
+
+  const goToPrevious = () => {
+    if (currentIndex > 0) {
+      setSelectedImage(images[currentIndex - 1]);
+    }
+  };
+
+  const goToNext = () => {
+    if (currentIndex < images.length - 1) {
+      setSelectedImage(images[currentIndex + 1]);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") setSelectedImage(null);
+    if (e.key === "ArrowLeft") goToPrevious();
+    if (e.key === "ArrowRight") goToNext();
+  };
+
+  return (
+    <>
+      {/* Expanded Image Modal */}
+      {selectedImage && (
+        <div
+          ref={modalRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 outline-none"
+          onClick={() => setSelectedImage(null)}
+          onKeyDown={handleKeyDown}
+        >
+          {/* Close button */}
+          <button
+            type="button"
+            className="absolute top-4 right-4 p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors"
+            onClick={() => setSelectedImage(null)}
+          >
+            <X className="w-6 h-6 text-text-primary" />
+          </button>
+
+          {/* Previous button */}
+          {currentIndex > 0 && (
+            <button
+              type="button"
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToPrevious();
+              }}
+            >
+              <ChevronLeft className="w-6 h-6 text-text-primary" />
+            </button>
+          )}
+
+          {/* Next button */}
+          {currentIndex < images.length - 1 && (
+            <button
+              type="button"
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToNext();
+              }}
+            >
+              <ChevronRight className="w-6 h-6 text-text-primary" />
+            </button>
+          )}
+          <div
+            role="presentation"
+            className="relative max-w-[90vw] max-h-[90vh] animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`${selectedImage.src}?random=${selectedImage.id}`}
+              alt={`AI generated artwork ${selectedImage.id}`}
+              className="max-w-full max-h-[85vh] object-contain rounded-xl"
+            />
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent rounded-b-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="avatar w-8 h-8" />
+                  <span className="text-sm font-medium text-text-primary">user_{selectedImage.id}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button type="button" className="flex items-center gap-1.5 text-text-primary hover:text-primary-400 transition-colors">
+                    <Heart className="w-5 h-5" />
+                    <span className="text-sm font-medium">{selectedImage.likes}</span>
+                  </button>
+                  <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
+                    <Bookmark className="w-5 h-5 text-text-primary" />
+                  </button>
+                  <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
+                    <Download className="w-5 h-5 text-text-primary" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grid - Masonry */}
+      <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+        {images.map((item) => (
+          <ImageCard key={item.id} item={item} onExpand={() => setSelectedImage(item)} />
+        ))}
+      </div>
+
+      {/* Load More */}
+      <div className="flex justify-center mt-12">
+        <button type="button" className="btn btn-secondary px-8 py-3">
+          Load More
+        </button>
+      </div>
+    </>
+  );
+}
+
+function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }) {
+  const heightClass = {
+    short: "aspect-[4/3]",
+    medium: "aspect-square",
+    tall: "aspect-[3/4]",
+  }[item.height];
+
+  return (
+    <div className="break-inside-avoid group">
+      <button
+        type="button"
+        onClick={onExpand}
+        className="image-card card-hover relative w-full text-left"
+      >
+        <div className={`${heightClass} bg-bg-base`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`${item.src}?random=${item.id}`}
+            alt={`AI generated artwork ${item.id}`}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+
+        {/* Hover Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {/* Top Actions */}
+          <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
+              <Bookmark className="w-4 h-4 text-text-primary" />
+            </button>
+            <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
+              <MoreHorizontal className="w-4 h-4 text-text-primary" />
+            </button>
+          </div>
+
+          {/* Bottom Info */}
+          <div className="absolute bottom-0 left-0 right-0 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="avatar w-7 h-7" />
+                <span className="text-sm font-medium text-text-primary">user_{item.id}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="button" className="flex items-center gap-1 text-text-primary hover:text-primary-400 transition-colors">
+                  <Heart className="w-4 h-4" />
+                  <span className="text-xs font-medium">{item.likes}</span>
+                </button>
+                <button type="button" className="text-text-primary hover:text-primary-400 transition-colors">
+                  <Download className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
