@@ -1,14 +1,6 @@
-import {
-  Bookmark,
-  ChevronDown,
-  Download,
-  Heart,
-  MoreHorizontal,
-  Search,
-  Settings,
-  Sparkles,
-  Zap,
-} from "lucide-react";
+import { Navbar } from "@/components/layout/navbar";
+import { Bookmark, Download, Heart, MoreHorizontal } from "lucide-react";
+import Link from "next/link";
 
 // Sample data with different aspect ratios
 const images = [
@@ -29,63 +21,7 @@ const images = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-bg-base">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border-subtle">
-        <div className="max-w-[1800px] mx-auto px-6 h-16 flex items-center justify-between">
-          {/* Left: Logo & Nav */}
-          <div className="flex items-center gap-8">
-            <h1 className="text-xl font-bold text-text-primary tracking-tight">
-              LEMME<span className="text-primary-500">.</span>LOVE
-            </h1>
-            <div className="hidden md:flex items-center gap-6">
-              <a href="/discover" className="text-sm font-medium text-text-primary hover:text-primary-400 transition-colors">
-                Discover
-              </a>
-              <a href="/shop" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2">
-                Shop
-                <span className="badge badge-new text-[10px] px-1.5 py-0.5">NEW</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Center: Search */}
-          <div className="flex-1 max-w-xl mx-8 hidden lg:block">
-            <div className="relative">
-              <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-              <input
-                type="text"
-                placeholder="Try 'cyberpunk aesthetic' or 'ethereal portrait'"
-                className="input pl-11 pr-20 py-2.5 bg-bg-elevated"
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <button type="button" className="p-1.5 hover:bg-bg-hover rounded-md transition-colors">
-                  <Search className="w-4 h-4 text-text-muted" />
-                </button>
-                <button type="button" className="p-1.5 hover:bg-bg-hover rounded-md transition-colors">
-                  <Settings className="w-4 h-4 text-text-muted" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Actions */}
-          <div className="flex items-center gap-3">
-            <button type="button" className="btn btn-outline py-2 px-4">
-              Create
-            </button>
-            <button type="button" className="p-2 hover:bg-bg-hover rounded-lg transition-colors">
-              <Zap className="w-5 h-5 text-text-secondary" />
-            </button>
-            <button type="button" className="p-2 hover:bg-bg-hover rounded-lg transition-colors">
-              <Bookmark className="w-5 h-5 text-text-secondary" />
-            </button>
-            <button type="button" className="flex items-center gap-2 p-1 hover:bg-bg-hover rounded-lg transition-colors">
-              <div className="avatar w-8 h-8" />
-              <ChevronDown className="w-4 h-4 text-text-muted" />
-            </button>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Main Content */}
       <main className="pt-24 pb-12">
@@ -125,15 +61,15 @@ export default function Home() {
               © 2024 Lemme.Love. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
-              <a href="/terms" className="text-sm text-text-muted hover:text-text-primary transition-colors">
+              <Link href="/terms" className="text-sm text-text-muted hover:text-text-primary transition-colors">
                 Terms
-              </a>
-              <a href="/privacy" className="text-sm text-text-muted hover:text-text-primary transition-colors">
+              </Link>
+              <Link href="/privacy" className="text-sm text-text-muted hover:text-text-primary transition-colors">
                 Privacy
-              </a>
-              <a href="/support" className="text-sm text-text-muted hover:text-text-primary transition-colors">
+              </Link>
+              <Link href="/support" className="text-sm text-text-muted hover:text-text-primary transition-colors">
                 Support
-              </a>
+              </Link>
             </div>
           </div>
         </div>
