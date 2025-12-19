@@ -1,6 +1,7 @@
 "use client";
 
 import { BookmarksProvider } from "./bookmarks-provider";
+import { LikesProvider } from "./likes-provider";
 
 export function Providers({
   children,
@@ -9,5 +10,9 @@ export function Providers({
   children: React.ReactNode;
   userId?: string;
 }) {
-  return <BookmarksProvider userId={userId}>{children}</BookmarksProvider>;
+  return (
+    <BookmarksProvider userId={userId}>
+      <LikesProvider userId={userId}>{children}</LikesProvider>
+    </BookmarksProvider>
+  );
 }

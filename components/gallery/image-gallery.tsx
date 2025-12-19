@@ -1,6 +1,7 @@
 "use client";
 
 import { useBookmarks } from "@/components/providers/bookmarks-provider";
+import { useLikes } from "@/components/providers/likes-provider";
 import { Bookmark, ChevronLeft, ChevronRight, Heart, MoreHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -163,7 +164,10 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 
 function LikeButton({ postId, likes, size = "sm" }: { postId: string; likes: number; size?: "sm" | "lg" }) {
   const { isAuthenticated } = useBookmarks();
+  const { isLiked, toggleLike, getLikeCount } = useLikes();
   const router = useRouter();
+  const liked = isLiked(postId);
+  const likeCount = getLikeCount(postId, likes);
   const iconSize = size === "lg" ? "w-5 h-5" : "w-4 h-4";
   const textSize = size === "lg" ? "text-sm" : "text-xs";
   const gap = size === "lg" ? "gap-1.5" : "gap-1";
@@ -178,11 +182,11 @@ function LikeButton({ postId, likes, size = "sm" }: { postId: string; likes: num
           router.push("/login");
           return;
         }
-        // TODO: implement like toggle
+        toggleLike(postId);
       }}
     >
-      <Heart className={iconSize} />
-      <span className={`${textSize} font-medium`}>{likes}</span>
+      <Heart className={`${iconSize} ${liked ? "fill-primary-400 text-primary-400" : ""}`} />
+      <span className={`${textSize} font-medium`}>{likeCount}</span>
     </button>
   );
 }
