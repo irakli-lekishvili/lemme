@@ -4,7 +4,6 @@ import {
   Download,
   Heart,
   MoreHorizontal,
-  Plus,
   Search,
   Settings,
   Sparkles,
@@ -99,72 +98,9 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="max-w-[1800px] mx-auto px-6 flex gap-6">
-          {/* Sidebar */}
-          <aside className="hidden xl:block w-72 flex-shrink-0">
-            <div className="sticky top-24 space-y-6">
-              {/* Connect Widget */}
-              <div className="bg-bg-card rounded-2xl p-6 border border-border-subtle">
-                <h3 className="text-sm font-semibold text-text-primary text-center mb-2">
-                  Connect elements
-                </h3>
-                <p className="text-xs text-text-muted text-center mb-4">
-                  to improve your feed
-                </p>
-                <div className="w-full h-2 bg-bg-hover rounded-full mb-3">
-                  <div className="h-full w-1/4 gradient-primary rounded-full" />
-                </div>
-                <p className="text-xs text-text-muted text-center">
-                  <span className="text-text-secondary font-medium">2/10</span> connected
-                </p>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="bg-bg-card rounded-2xl p-4 border border-border-subtle">
-                <h3 className="text-sm font-semibold text-text-primary mb-4 px-2">
-                  Quick Create
-                </h3>
-                <div className="space-y-1">
-                  <button type="button" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-bg-hover transition-colors text-left">
-                    <div className="w-10 h-10 rounded-xl bg-primary-950 flex items-center justify-center">
-                      <Plus className="w-5 h-5 text-primary-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">New Image</p>
-                      <p className="text-xs text-text-muted">Generate with AI</p>
-                    </div>
-                  </button>
-                  <button type="button" className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-bg-hover transition-colors text-left">
-                    <div className="w-10 h-10 rounded-xl bg-secondary-950 flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-secondary-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">Remix</p>
-                      <p className="text-xs text-text-muted">Edit existing</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Trending Tags */}
-              <div className="bg-bg-card rounded-2xl p-4 border border-border-subtle">
-                <h3 className="text-sm font-semibold text-text-primary mb-4 px-2">
-                  Trending Tags
-                </h3>
-                <div className="flex flex-wrap gap-2 px-2">
-                  <span className="badge badge-primary">cyberpunk</span>
-                  <span className="badge badge-secondary">ethereal</span>
-                  <span className="badge bg-bg-hover text-text-secondary">portrait</span>
-                  <span className="badge bg-bg-hover text-text-secondary">fantasy</span>
-                  <span className="badge bg-bg-hover text-text-secondary">noir</span>
-                  <span className="badge badge-primary">anime</span>
-                </div>
-              </div>
-            </div>
-          </aside>
-
+        <div className="max-w-[1800px] mx-auto px-6">
           {/* Grid - Masonry */}
-          <div className="flex-1">
+          <div className="w-full">
             <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
               {images.map((item) => (
                 <ImageCard key={item.id} item={item} />
