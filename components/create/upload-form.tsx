@@ -289,7 +289,7 @@ export function UploadForm() {
       <button
         type="submit"
         disabled={!file || selectedCategories.length === 0 || isUploading}
-        className="w-full btn btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full btn btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
       >
         {isUploading ? (
           <>
