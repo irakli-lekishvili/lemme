@@ -3,7 +3,14 @@
 import { Bookmark, ChevronLeft, ChevronRight, Download, Heart, MoreHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-type ImageItem = { id: number; src: string; likes: number; height: string };
+export type ImageItem = {
+  id: string | number;
+  src: string;
+  likes: number;
+  height?: string;
+  title?: string;
+  user_id?: string;
+};
 
 interface ImageGalleryProps {
   images: ImageItem[];
@@ -95,8 +102,8 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`${selectedImage.src}?random=${selectedImage.id}`}
-              alt={`AI generated artwork ${selectedImage.id}`}
+              src={selectedImage.src.includes("picsum") ? `${selectedImage.src}?random=${selectedImage.id}` : selectedImage.src}
+              alt={selectedImage.title || `Artwork ${selectedImage.id}`}
               className="max-w-full max-h-[85vh] object-contain rounded-xl"
             />
             <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent rounded-b-xl">
@@ -141,11 +148,12 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 }
 
 function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }) {
-  const heightClass = {
+  const heightClasses: Record<string, string> = {
     short: "aspect-[4/3]",
     medium: "aspect-square",
     tall: "aspect-[3/4]",
-  }[item.height];
+  };
+  const heightClass = item.height ? heightClasses[item.height] : "aspect-square";
 
   return (
     <div className="break-inside-avoid group">
@@ -158,8 +166,8 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`${item.src}?random=${item.id}`}
-            alt={`AI generated artwork ${item.id}`}
+            src={item.src.includes("picsum") ? `${item.src}?random=${item.id}` : item.src}
+            alt={item.title || `Artwork ${item.id}`}
             className="w-full h-full object-cover"
             loading="lazy"
           />

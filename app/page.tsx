@@ -1,9 +1,10 @@
-import { ImageGallery } from "@/components/gallery/image-gallery";
+import { ImageGallery, type ImageItem } from "@/components/gallery/image-gallery";
 import { Navbar } from "@/components/layout/navbar";
+import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
-// Sample data with different aspect ratios
-const images = [
+// Sample data for fallback/demo
+const sampleImages: ImageItem[] = [
   { id: 1, src: "https://picsum.photos/400/600", likes: 234, height: "tall" },
   { id: 2, src: "https://picsum.photos/400/300", likes: 89, height: "short" },
   { id: 3, src: "https://picsum.photos/400/400", likes: 567, height: "medium" },
@@ -18,7 +19,31 @@ const images = [
   { id: 12, src: "https://picsum.photos/400/420", likes: 89, height: "medium" },
 ];
 
-export default function Home() {
+async function getPosts(): Promise<ImageItem[]> {
+  try {
+    const supabase = await createClient();
+    const { data: posts } = await supabase
+      .from("posts")
+      .select("id, image_url, likes_count, title, user_id")
+      .order("created_at", { ascending: false });
+
+    if (posts && posts.length > 0) {
+      return posts.map((post) => ({
+        id: post.id,
+        src: post.image_url,
+        likes: post.likes_count,
+        title: post.title,
+        user_id: post.user_id,
+      }));
+    }
+  } catch {
+    // Database not set up yet, use sample images
+  }
+  return sampleImages;
+}
+
+export default async function Home() {
+  const images = await getPosts();
   return (
     <div className="min-h-screen bg-bg-base">
       <Navbar />
