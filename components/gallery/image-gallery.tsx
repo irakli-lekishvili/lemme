@@ -262,7 +262,7 @@ function MoreOptionsMenu({ postId }: { postId: string }) {
         </button>
 
         {isOpen && (
-          <div className="absolute top-full right-0 mt-1 bg-bg-base border border-border-primary rounded-lg shadow-lg overflow-hidden z-10 min-w-[140px]">
+          <div className="absolute top-full right-0 mt-1 bg-bg-base rounded-lg shadow-lg overflow-hidden z-10 min-w-[140px]">
             <button
               type="button"
               onClick={(e) => {

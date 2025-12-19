@@ -172,7 +172,7 @@ export function ReportModal({ postId, isOpen, onClose }: ReportModalProps) {
 
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="bg-bg-base border-none">
+      <DrawerContent className="bg-bg-base border-none max-h-[90vh]">
         <DrawerHeader>
           <DrawerTitle className="flex items-center justify-center gap-2 text-text-primary">
             <Flag className="w-5 h-5 text-red-500" />
@@ -182,7 +182,7 @@ export function ReportModal({ postId, isOpen, onClose }: ReportModalProps) {
             Help us understand what&apos;s wrong with this content.
           </DrawerDescription>
         </DrawerHeader>
-        <div className="px-4 pb-6">
+        <div className="px-4 pb-8 overflow-y-auto">
           <ReportContent postId={postId} onClose={onClose} />
         </div>
       </DrawerContent>
