@@ -1,9 +1,16 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { ImagePlus, Loader2, Upload, X } from "lucide-react";
+import { Check, ImagePlus, Loader2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+};
 
 export function UploadForm() {
   const router = useRouter();
@@ -12,6 +19,8 @@ export function UploadForm() {
   const [preview, setPreview] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -25,7 +34,27 @@ export function UploadForm() {
         setIsAuthenticated(true);
       }
     });
+
+    // Fetch categories
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setCategories(data);
+        }
+      })
+      .catch(() => {});
   }, [router]);
+
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : prev.length < 3
+          ? [...prev, categoryId]
+          : prev
+    );
+  };
 
   const handleFile = useCallback((selectedFile: File) => {
     const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -80,6 +109,7 @@ export function UploadForm() {
     formData.append("file", file);
     formData.append("title", title);
     formData.append("description", description);
+    formData.append("categories", JSON.stringify(selectedCategories));
 
     try {
       const response = await fetch("/api/posts", {
@@ -208,6 +238,46 @@ export function UploadForm() {
         />
       </div>
 
+      {/* Categories */}
+      {categories.length > 0 && (
+        <fieldset className="border-0 p-0 m-0">
+          <legend className="block text-sm font-medium text-text-secondary mb-2">
+            Category <span className="text-primary-500">*</span>
+            <span className="text-text-muted font-normal ml-1">(select 1-3)</span>
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => {
+              const isSelected = selectedCategories.includes(category.id);
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => toggleCategory(category.id)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
+                    isSelected
+                      ? "bg-primary-500 text-white"
+                      : "bg-bg-elevated text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                  }`}
+                  style={
+                    isSelected && category.color
+                      ? { backgroundColor: category.color }
+                      : undefined
+                  }
+                >
+                  {isSelected && <Check className="w-3.5 h-3.5" />}
+                  {category.name}
+                </button>
+              );
+            })}
+          </div>
+          {selectedCategories.length === 3 && (
+            <p className="text-xs text-text-muted mt-2">
+              Maximum 3 categories selected
+            </p>
+          )}
+        </fieldset>
+      )}
+
       {/* Error */}
       {error && (
         <div className="p-4 bg-error-500/10 border border-error-500/20 rounded-lg">
@@ -218,7 +288,7 @@ export function UploadForm() {
       {/* Submit */}
       <button
         type="submit"
-        disabled={!file || isUploading}
+        disabled={!file || selectedCategories.length === 0 || isUploading}
         className="w-full btn btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isUploading ? (

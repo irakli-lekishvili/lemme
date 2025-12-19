@@ -31,9 +31,19 @@ export async function POST(request: Request) {
   const file = formData.get("file") as File;
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
+  const categoriesJson = formData.get("categories") as string;
+  const categoryIds: string[] = categoriesJson ? JSON.parse(categoriesJson) : [];
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
+  }
+
+  // Validate categories (at least one required)
+  if (categoryIds.length === 0) {
+    return NextResponse.json(
+      { error: "At least one category is required" },
+      { status: 400 }
+    );
   }
 
   // Validate file type
@@ -92,6 +102,16 @@ export async function POST(request: Request) {
     // Clean up uploaded file if post creation fails
     await supabase.storage.from("images").remove([fileName]);
     return NextResponse.json({ error: postError.message }, { status: 500 });
+  }
+
+  // Add categories if provided
+  if (categoryIds.length > 0) {
+    const postCategories = categoryIds.map((categoryId) => ({
+      post_id: post.id,
+      category_id: categoryId,
+    }));
+
+    await supabase.from("post_categories").insert(postCategories);
   }
 
   return NextResponse.json(post, { status: 201 });

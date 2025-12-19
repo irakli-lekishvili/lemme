@@ -3,6 +3,12 @@
 import { Bookmark, ChevronLeft, ChevronRight, Download, Heart, MoreHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+export type ImageCategory = {
+  name: string;
+  slug: string;
+  color: string | null;
+};
+
 export type ImageItem = {
   id: string | number;
   src: string;
@@ -10,6 +16,7 @@ export type ImageItem = {
   height?: string;
   title?: string;
   user_id?: string;
+  categories?: ImageCategory[];
 };
 
 interface ImageGalleryProps {
@@ -172,6 +179,26 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
             loading="lazy"
           />
         </button>
+
+        {/* Category Tags - Always visible */}
+        {item.categories && item.categories.length > 0 && (
+          <div className="absolute top-3 left-3 flex flex-wrap gap-1 max-w-[calc(100%-60px)]">
+            {item.categories.slice(0, 2).map((cat) => (
+              <span
+                key={cat.slug}
+                className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-black/60 backdrop-blur-sm text-white"
+                style={cat.color ? { backgroundColor: `${cat.color}cc` } : undefined}
+              >
+                {cat.name}
+              </span>
+            ))}
+            {item.categories.length > 2 && (
+              <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-black/60 backdrop-blur-sm text-white">
+                +{item.categories.length - 2}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Hover Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
