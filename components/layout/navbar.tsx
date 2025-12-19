@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Bookmark, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { UserNav } from "../auth/user-nav";
+import { ViewToggle } from "./view-toggle";
 
 export async function Navbar() {
   const supabase = await createClient();
@@ -27,6 +28,7 @@ export async function Navbar() {
             >
               Discover
             </Link>
+            <ViewToggle />
           </div>
         </div>
 
