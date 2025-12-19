@@ -57,12 +57,12 @@ export async function Navbar() {
               <Link href="/create" className="btn btn-outline py-2 px-4">
                 Create
               </Link>
-              <button
-                type="button"
+              <Link
+                href="/bookmarks"
                 className="p-2 hover:bg-bg-hover rounded-lg transition-colors"
               >
                 <Bookmark className="w-5 h-5 text-text-secondary" />
-              </button>
+              </Link>
             </>
           )}
           <UserNav user={user} />
