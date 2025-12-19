@@ -2,7 +2,9 @@
 
 import { useBookmarks } from "@/components/providers/bookmarks-provider";
 import { useLikes } from "@/components/providers/likes-provider";
-import { Bookmark, ChevronLeft, ChevronRight, Heart, MoreHorizontal, X } from "lucide-react";
+import { useReports } from "@/components/providers/reports-provider";
+import { ReportModal } from "./report-modal";
+import { Bookmark, ChevronLeft, ChevronRight, Flag, Heart, MoreHorizontal, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -217,6 +219,74 @@ function BookmarkButton({ postId, size = "sm" }: { postId: string; size?: "sm" |
   );
 }
 
+function MoreOptionsMenu({ postId }: { postId: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const { isAuthenticated } = useReports();
+  const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const handleReportClick = () => {
+    setIsOpen(false);
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+    setShowReportModal(true);
+  };
+
+  return (
+    <>
+      <div ref={menuRef} className="relative">
+        <button
+          type="button"
+          className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
+        >
+          <MoreHorizontal className="w-4 h-4 text-text-primary" />
+        </button>
+
+        {isOpen && (
+          <div className="absolute top-full right-0 mt-1 bg-bg-base border border-border-primary rounded-lg shadow-lg overflow-hidden z-10 min-w-[140px]">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReportClick();
+              }}
+              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-bg-hover transition-colors"
+            >
+              <Flag className="w-4 h-4" />
+              Report
+            </button>
+          </div>
+        )}
+      </div>
+
+      <ReportModal
+        postId={postId}
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+      />
+    </>
+  );
+}
+
 function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }) {
   const heightClasses: Record<string, string> = {
     short: "aspect-[4/3]",
@@ -268,9 +338,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
           {/* Top Actions */}
           <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
             <BookmarkButton postId={String(item.id)} />
-            <button type="button" className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors">
-              <MoreHorizontal className="w-4 h-4 text-text-primary" />
-            </button>
+            <MoreOptionsMenu postId={String(item.id)} />
           </div>
 
           {/* Bottom Info */}
