@@ -4,7 +4,12 @@ import { useBookmarks } from "@/components/providers/bookmarks-provider";
 import { useLikes } from "@/components/providers/likes-provider";
 import { useReports } from "@/components/providers/reports-provider";
 import { ReportModal } from "./report-modal";
-import { Bookmark, ChevronLeft, ChevronRight, Flag, Heart, MoreHorizontal, X } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, Flag, Forward, Heart, MoreHorizontal, X } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -34,6 +39,7 @@ export type ImageItem = {
   height?: string;
   title?: string;
   user_id?: string;
+  short_id?: string | null;
   categories?: ImageCategory[];
 };
 
@@ -219,6 +225,34 @@ function BookmarkButton({ postId, size = "sm" }: { postId: string; size?: "sm" |
   );
 }
 
+function ShareButton({ postId }: { postId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = `${window.location.origin}/post/${postId}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Tooltip open={copied}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors"
+          onClick={handleCopy}
+          aria-label="Copy link"
+        >
+          <Forward className="w-4 h-4 text-text-primary" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>Copied!</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function MoreOptionsMenu({ postId }: { postId: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -337,6 +371,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
           {/* Top Actions */}
           <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
+            <ShareButton postId={item.short_id || String(item.id)} />
             <BookmarkButton postId={String(item.id)} />
             <MoreOptionsMenu postId={String(item.id)} />
           </div>

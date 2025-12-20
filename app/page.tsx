@@ -47,7 +47,7 @@ async function getPosts(categorySlug?: string): Promise<ImageItem[]> {
           const postIds = postCategories.map((pc) => pc.post_id);
           const { data: posts } = await supabase
             .from("posts")
-            .select("id, image_url, likes_count, title, user_id")
+            .select("id, image_url, likes_count, title, user_id, short_id")
             .in("id", postIds)
             .order("created_at", { ascending: false });
 
@@ -58,6 +58,7 @@ async function getPosts(categorySlug?: string): Promise<ImageItem[]> {
               likes: post.likes_count,
               title: post.title,
               user_id: post.user_id,
+              short_id: post.short_id,
             }));
           }
         }
@@ -67,7 +68,7 @@ async function getPosts(categorySlug?: string): Promise<ImageItem[]> {
 
     const { data: posts } = await supabase
       .from("posts")
-      .select("id, image_url, likes_count, title, user_id")
+      .select("id, image_url, likes_count, title, user_id, short_id")
       .order("created_at", { ascending: false });
 
     if (posts && posts.length > 0) {
@@ -77,6 +78,7 @@ async function getPosts(categorySlug?: string): Promise<ImageItem[]> {
         likes: post.likes_count,
         title: post.title,
         user_id: post.user_id,
+        short_id: post.short_id,
       }));
     }
   } catch {
