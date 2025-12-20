@@ -111,6 +111,28 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
     }
   }, [selectedImage]);
 
+  // Preload adjacent images for smoother navigation
+  useEffect(() => {
+    if (!selectedImage || currentIndex === -1) return;
+
+    const preloadImage = (src: string) => {
+      const img = new Image();
+      img.src = src;
+    };
+
+    // Preload previous image
+    if (currentIndex > 0) {
+      const prevImage = allImages[currentIndex - 1];
+      preloadImage(getImageUrl(prevImage.src, prevImage.id, "xlarge"));
+    }
+
+    // Preload next image
+    if (currentIndex < allImages.length - 1) {
+      const nextImage = allImages[currentIndex + 1];
+      preloadImage(getImageUrl(nextImage.src, nextImage.id, "xlarge"));
+    }
+  }, [selectedImage, currentIndex, allImages]);
+
   const goToPrevious = () => {
     if (currentIndex > 0) {
       setIsModalImageLoaded(false);
@@ -221,8 +243,8 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
         </div>
       )}
 
-      {/* Grid - Masonry */}
-      <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+      {/* Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {allImages.map((item) => (
           <ImageCard key={item.id} item={item} onExpand={() => handleImageSelect(item)} />
         ))}
@@ -403,7 +425,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
   const heightClass = item.height ? heightClasses[item.height] : "aspect-square";
 
   return (
-    <div className="break-inside-avoid group">
+    <div className="group">
       <div className="image-card card-hover relative w-full">
         {/* Clickable image area */}
         <button
