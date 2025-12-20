@@ -12,7 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 // Convert Supabase storage URLs to local proxy to avoid Kong browser issues
 function getImageUrl(src: string, id: string | number): string {
@@ -57,18 +57,20 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
   const [isPending, startTransition] = useTransition();
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const loaderRef = useRef<HTMLDivElement>(null);
 
   const currentIndex = selectedImage ? allImages.findIndex((img) => img.id === selectedImage.id) : -1;
 
-  const loadMore = () => {
-    const nextPage = page + 1;
+  const loadMore = useCallback(() => {
+    if (isPending) return;
     startTransition(async () => {
+      const nextPage = page + 1;
       const { posts, hasMore: more } = await getPaginatedPosts(nextPage, categorySlug);
       setAllImages((prev) => [...prev, ...posts]);
       setPage(nextPage);
       setHasMore(more);
     });
-  };
+  }, [isPending, page, categorySlug]);
 
   // Reset when images prop changes (e.g., category filter)
   useEffect(() => {
@@ -76,6 +78,24 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
     setPage(0);
     setHasMore(initialHasMore);
   }, [images, initialHasMore]);
+
+  // Infinite scroll with Intersection Observer
+  useEffect(() => {
+    const loader = loaderRef.current;
+    if (!loader || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1, rootMargin: "100px" }
+    );
+
+    observer.observe(loader);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
 
   useEffect(() => {
     if (selectedImage && modalRef.current) {
@@ -184,24 +204,15 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
         ))}
       </div>
 
-      {/* Load More */}
+      {/* Infinite scroll loader */}
       {hasMore && (
-        <div className="flex justify-center mt-12">
-          <button
-            type="button"
-            className="btn btn-secondary px-8 py-3 flex items-center gap-2"
-            onClick={loadMore}
-            disabled={isPending}
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              "Load More"
-            )}
-          </button>
+        <div ref={loaderRef} className="flex justify-center mt-12 py-8">
+          {isPending && (
+            <div className="flex items-center gap-2 text-text-muted">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Loading...</span>
+            </div>
+          )}
         </div>
       )}
     </>
