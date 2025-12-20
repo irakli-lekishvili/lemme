@@ -102,19 +102,13 @@ export function getCloudflareImageUrl(imageId: string, variant: ImageVariant = "
   const accountHash = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
 
   if (!accountHash) {
-    // Fallback: return as-is if not configured (for development/migration)
-    return imageId;
+    throw new Error("NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH not configured");
   }
 
   // If it's already a Cloudflare URL, extract the ID
   const cfMatch = imageId.match(/imagedelivery\.net\/[^/]+\/([^/]+)/);
   if (cfMatch) {
     return `https://imagedelivery.net/${accountHash}/${cfMatch[1]}/${variant}`;
-  }
-
-  // If it's a Supabase URL, return as-is (legacy support)
-  if (imageId.includes("supabase") || imageId.includes("/storage/v1/")) {
-    return imageId;
   }
 
   // Assume it's a raw Cloudflare image ID

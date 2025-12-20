@@ -28,19 +28,12 @@ function getImageUrl(src: string, id: string | number, variant: ImageVariant = "
   }
 
   const accountHash = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
+  if (!accountHash) return src;
 
-  // Handle Cloudflare Images URLs
-  if (src.includes("imagedelivery.net") && accountHash) {
-    const cfMatch = src.match(/imagedelivery\.net\/[^/]+\/([^/]+)/);
-    if (cfMatch) {
-      return `https://imagedelivery.net/${accountHash}/${cfMatch[1]}/${variant}`;
-    }
-  }
-
-  // Legacy: Supabase storage URLs via local proxy
-  const match = src.match(/\/storage\/v1\/object\/public\/images\/(.+)$/);
-  if (match) {
-    return `/api/images/${match[1]}`;
+  // Extract Cloudflare image ID and build delivery URL with variant
+  const cfMatch = src.match(/imagedelivery\.net\/[^/]+\/([^/]+)/);
+  if (cfMatch) {
+    return `https://imagedelivery.net/${accountHash}/${cfMatch[1]}/${variant}`;
   }
 
   return src;
