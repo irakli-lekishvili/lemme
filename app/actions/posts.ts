@@ -40,7 +40,7 @@ export async function getPaginatedPosts(
           .select("id, image_url, likes_count, title, user_id, short_id")
           .in("id", postIds)
           .order("created_at", { ascending: false })
-          .range(offset, offset + PAGE_SIZE);
+          .range(offset, offset + PAGE_SIZE - 1);
 
         if (posts) {
           return {
@@ -52,7 +52,7 @@ export async function getPaginatedPosts(
               user_id: post.user_id,
               short_id: post.short_id,
             })),
-            hasMore: posts.length > PAGE_SIZE,
+            hasMore: posts.length === PAGE_SIZE,
           };
         }
       }
@@ -65,7 +65,7 @@ export async function getPaginatedPosts(
     .from("posts")
     .select("id, image_url, likes_count, title, user_id, short_id")
     .order("created_at", { ascending: false })
-    .range(offset, offset + PAGE_SIZE);
+    .range(offset, offset + PAGE_SIZE - 1);
 
   if (posts) {
     return {
@@ -77,7 +77,7 @@ export async function getPaginatedPosts(
         user_id: post.user_id,
         short_id: post.short_id,
       })),
-      hasMore: posts.length > PAGE_SIZE,
+      hasMore: posts.length === PAGE_SIZE,
     };
   }
 

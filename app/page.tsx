@@ -52,7 +52,7 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
             .select("id, image_url, likes_count, title, user_id, short_id")
             .in("id", postIds)
             .order("created_at", { ascending: false })
-            .range(0, PAGE_SIZE);
+            .range(0, PAGE_SIZE - 1);
 
           if (posts && posts.length > 0) {
             return {
@@ -64,7 +64,7 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
                 user_id: post.user_id,
                 short_id: post.short_id,
               })),
-              hasMore: posts.length > PAGE_SIZE,
+              hasMore: posts.length === PAGE_SIZE,
             };
           }
         }
@@ -76,7 +76,7 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
       .from("posts")
       .select("id, image_url, likes_count, title, user_id, short_id")
       .order("created_at", { ascending: false })
-      .range(0, PAGE_SIZE);
+      .range(0, PAGE_SIZE - 1);
 
     if (posts && posts.length > 0) {
       return {
@@ -88,7 +88,7 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
           user_id: post.user_id,
           short_id: post.short_id,
         })),
-        hasMore: posts.length > PAGE_SIZE,
+        hasMore: posts.length === PAGE_SIZE,
       };
     }
   } catch {
