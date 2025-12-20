@@ -23,7 +23,7 @@ export async function Navbar() {
           </Link>
           <div className="hidden md:flex items-center gap-6">
             <Link
-              href="/discover"
+              href="/"
               className="text-sm font-medium text-text-primary hover:text-primary-400 transition-colors"
             >
               Discover

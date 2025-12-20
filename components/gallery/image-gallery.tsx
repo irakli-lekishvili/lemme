@@ -3,15 +3,16 @@
 import { useBookmarks } from "@/components/providers/bookmarks-provider";
 import { useLikes } from "@/components/providers/likes-provider";
 import { useReports } from "@/components/providers/reports-provider";
+import { getPaginatedPosts } from "@/app/actions/posts";
 import { ReportModal } from "./report-modal";
-import { Bookmark, ChevronLeft, ChevronRight, Flag, Forward, Heart, MoreHorizontal, X } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, Flag, Forward, Heart, Loader2, MoreHorizontal, X } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 // Convert Supabase storage URLs to local proxy to avoid Kong browser issues
 function getImageUrl(src: string, id: string | number): string {
@@ -45,13 +46,36 @@ export type ImageItem = {
 
 interface ImageGalleryProps {
   images: ImageItem[];
+  categorySlug?: string;
+  initialHasMore?: boolean;
 }
 
-export function ImageGallery({ images }: ImageGalleryProps) {
+export function ImageGallery({ images, categorySlug, initialHasMore = true }: ImageGalleryProps) {
+  const [allImages, setAllImages] = useState<ImageItem[]>(images);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isPending, startTransition] = useTransition();
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const currentIndex = selectedImage ? images.findIndex((img) => img.id === selectedImage.id) : -1;
+  const currentIndex = selectedImage ? allImages.findIndex((img) => img.id === selectedImage.id) : -1;
+
+  const loadMore = () => {
+    const nextPage = page + 1;
+    startTransition(async () => {
+      const { posts, hasMore: more } = await getPaginatedPosts(nextPage, categorySlug);
+      setAllImages((prev) => [...prev, ...posts]);
+      setPage(nextPage);
+      setHasMore(more);
+    });
+  };
+
+  // Reset when images prop changes (e.g., category filter)
+  useEffect(() => {
+    setAllImages(images);
+    setPage(0);
+    setHasMore(initialHasMore);
+  }, [images, initialHasMore]);
 
   useEffect(() => {
     if (selectedImage && modalRef.current) {
@@ -61,13 +85,13 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 
   const goToPrevious = () => {
     if (currentIndex > 0) {
-      setSelectedImage(images[currentIndex - 1]);
+      setSelectedImage(allImages[currentIndex - 1]);
     }
   };
 
   const goToNext = () => {
-    if (currentIndex < images.length - 1) {
-      setSelectedImage(images[currentIndex + 1]);
+    if (currentIndex < allImages.length - 1) {
+      setSelectedImage(allImages[currentIndex + 1]);
     }
   };
 
@@ -114,7 +138,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           )}
 
           {/* Next button */}
-          {currentIndex < images.length - 1 && (
+          {currentIndex < allImages.length - 1 && (
             <button
               type="button"
               className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors"
@@ -155,17 +179,31 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 
       {/* Grid - Masonry */}
       <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-        {images.map((item) => (
+        {allImages.map((item) => (
           <ImageCard key={item.id} item={item} onExpand={() => setSelectedImage(item)} />
         ))}
       </div>
 
       {/* Load More */}
-      <div className="flex justify-center mt-12">
-        <button type="button" className="btn btn-secondary px-8 py-3">
-          Load More
-        </button>
-      </div>
+      {hasMore && (
+        <div className="flex justify-center mt-12">
+          <button
+            type="button"
+            className="btn btn-secondary px-8 py-3 flex items-center gap-2"
+            onClick={loadMore}
+            disabled={isPending}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              "Load More"
+            )}
+          </button>
+        </div>
+      )}
     </>
   );
 }

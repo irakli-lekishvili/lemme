@@ -24,7 +24,9 @@ async function getCategories(): Promise<Category[]> {
   }
 }
 
-async function getPosts(categorySlug?: string): Promise<ImageItem[]> {
+const PAGE_SIZE = 8;
+
+async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; hasMore: boolean }> {
   try {
     const supabase = await createClient();
 
@@ -49,52 +51,61 @@ async function getPosts(categorySlug?: string): Promise<ImageItem[]> {
             .from("posts")
             .select("id, image_url, likes_count, title, user_id, short_id")
             .in("id", postIds)
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: false })
+            .range(0, PAGE_SIZE);
 
           if (posts && posts.length > 0) {
-            return posts.map((post) => ({
-              id: post.id,
-              src: post.image_url,
-              likes: post.likes_count,
-              title: post.title,
-              user_id: post.user_id,
-              short_id: post.short_id,
-            }));
+            return {
+              posts: posts.map((post) => ({
+                id: post.id,
+                src: post.image_url,
+                likes: post.likes_count,
+                title: post.title,
+                user_id: post.user_id,
+                short_id: post.short_id,
+              })),
+              hasMore: posts.length > PAGE_SIZE,
+            };
           }
         }
-        return [];
+        return { posts: [], hasMore: false };
       }
     }
 
     const { data: posts } = await supabase
       .from("posts")
       .select("id, image_url, likes_count, title, user_id, short_id")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(0, PAGE_SIZE);
 
     if (posts && posts.length > 0) {
-      return posts.map((post) => ({
-        id: post.id,
-        src: post.image_url,
-        likes: post.likes_count,
-        title: post.title,
-        user_id: post.user_id,
-        short_id: post.short_id,
-      }));
+      return {
+        posts: posts.map((post) => ({
+          id: post.id,
+          src: post.image_url,
+          likes: post.likes_count,
+          title: post.title,
+          user_id: post.user_id,
+          short_id: post.short_id,
+        })),
+        hasMore: posts.length > PAGE_SIZE,
+      };
     }
   } catch {
     // Database not set up yet
   }
-  return [];
+  return { posts: [], hasMore: false };
 }
 
 type SearchParams = Promise<{ category?: string }>;
 
 export default async function Home({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const [images, categories] = await Promise.all([
+  const [postsData, categories] = await Promise.all([
     getPosts(params.category),
     getCategories(),
   ]);
+  const { posts: images, hasMore } = postsData;
 
   return (
     <div className="min-h-screen bg-bg-base">
@@ -111,7 +122,7 @@ export default async function Home({ searchParams }: { searchParams: SearchParam
 
         <div className="max-w-[1800px] mx-auto px-6">
           <div className="w-full">
-            <ImageGallery images={images} />
+            <ImageGallery images={images} categorySlug={params.category} initialHasMore={hasMore} />
           </div>
         </div>
       </main>
