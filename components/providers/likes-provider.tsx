@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 type LikesContextType = {
   likedIds: Set<string>;
@@ -24,6 +24,7 @@ export function LikesProvider({
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [likeCounts, setLikeCounts] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const initialCountsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!userId) {
@@ -67,7 +68,7 @@ export function LikesProvider({
 
       setLikeCounts((prev) => {
         const next = new Map(prev);
-        const current = next.get(postId) ?? 0;
+        const current = next.get(postId) ?? initialCountsRef.current.get(postId) ?? 0;
         next.set(postId, isCurrentlyLiked ? current - 1 : current + 1);
         return next;
       });
@@ -94,6 +95,10 @@ export function LikesProvider({
 
   const getLikeCount = useCallback(
     (postId: string, initialCount: number) => {
+      // Store initial count for reference by toggleLike
+      if (!initialCountsRef.current.has(postId)) {
+        initialCountsRef.current.set(postId, initialCount);
+      }
       if (likeCounts.has(postId)) {
         return likeCounts.get(postId)!;
       }

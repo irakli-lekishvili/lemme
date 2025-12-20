@@ -90,11 +90,11 @@ export function PostDetail({ post }: PostDetailProps) {
                 {post.title && (
                   <p className="text-sm text-text-primary mb-1">
                     <span className="font-semibold">Anonymous</span>{" "}
-                    <span className="text-text-secondary">{post.title}</span>
+                    <span>{post.title}</span>
                   </p>
                 )}
                 {post.description && (
-                  <p className="text-sm text-text-muted">{post.description}</p>
+                  <p className="text-sm text-text-secondary">{post.description}</p>
                 )}
               </div>
             )}
