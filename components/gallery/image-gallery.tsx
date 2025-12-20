@@ -315,7 +315,7 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
                       setIsModalImageLoaded(false);
                       setGroupIndex(groupIndex - 1);
                     }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-white/70 rounded-lg shadow-md hover:bg-white/90 transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4 text-gray-800" />
                   </button>
@@ -329,7 +329,7 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
                       setIsModalImageLoaded(false);
                       setGroupIndex(groupIndex + 1);
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-white/70 rounded-lg shadow-md hover:bg-white/90 transition-colors"
                   >
                     <ChevronRight className="w-4 h-4 text-gray-800" />
                   </button>
