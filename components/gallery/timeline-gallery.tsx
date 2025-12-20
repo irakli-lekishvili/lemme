@@ -19,16 +19,30 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Convert Supabase storage URLs to local proxy to avoid Kong browser issues
-function getImageUrl(src: string, id: string | number): string {
+type ImageVariant = "thumbnail" | "medium" | "large" | "xlarge";
+
+// Get optimized image URL with Cloudflare Images variants
+function getImageUrl(src: string, id: string | number, variant: ImageVariant = "large"): string {
   if (src.includes("picsum")) {
     return `${src}?random=${id}`;
   }
-  // Extract the path from Supabase storage URL and use local proxy
+
+  const accountHash = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
+
+  // Handle Cloudflare Images URLs
+  if (src.includes("imagedelivery.net") && accountHash) {
+    const cfMatch = src.match(/imagedelivery\.net\/[^/]+\/([^/]+)/);
+    if (cfMatch) {
+      return `https://imagedelivery.net/${accountHash}/${cfMatch[1]}/${variant}`;
+    }
+  }
+
+  // Legacy: Supabase storage URLs via local proxy
   const match = src.match(/\/storage\/v1\/object\/public\/images\/(.+)$/);
   if (match) {
     return `/api/images/${match[1]}`;
   }
+
   return src;
 }
 
@@ -105,7 +119,7 @@ function TimelinePost({ post }: { post: TimelineItem }) {
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={getImageUrl(post.src, post.id)}
+          src={getImageUrl(post.src, post.id, "medium")}
           alt={post.title || `Post ${post.id}`}
           className={`w-full h-full object-cover transition-opacity duration-300 ${
             imageLoaded ? "opacity-100" : "opacity-0"

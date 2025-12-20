@@ -2,15 +2,30 @@
 
 import Link from "next/link";
 
-// Convert Supabase storage URLs to local proxy
-function getImageUrl(src: string, id: string): string {
+type ImageVariant = "thumbnail" | "medium" | "large" | "xlarge";
+
+// Get optimized image URL with Cloudflare Images variants
+function getImageUrl(src: string, id: string, variant: ImageVariant = "large"): string {
   if (src.includes("picsum")) {
     return `${src}?random=${id}`;
   }
+
+  const accountHash = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
+
+  // Handle Cloudflare Images URLs
+  if (src.includes("imagedelivery.net") && accountHash) {
+    const cfMatch = src.match(/imagedelivery\.net\/[^/]+\/([^/]+)/);
+    if (cfMatch) {
+      return `https://imagedelivery.net/${accountHash}/${cfMatch[1]}/${variant}`;
+    }
+  }
+
+  // Legacy: Supabase storage URLs via local proxy
   const match = src.match(/\/storage\/v1\/object\/public\/images\/(.+)$/);
   if (match) {
     return `/api/images/${match[1]}`;
   }
+
   return src;
 }
 
@@ -36,7 +51,7 @@ export function RelatedPosts({ posts }: RelatedPostsProps) {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={getImageUrl(post.image_url, post.id)}
+            src={getImageUrl(post.image_url, post.id, "thumbnail")}
             alt={post.title || "Related post"}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             loading="lazy"

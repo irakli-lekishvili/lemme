@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { uploadToCloudflare, deleteFromCloudflare, getCloudflareImageUrl } from "@/lib/cloudflare-images";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 
@@ -65,26 +66,17 @@ export async function POST(request: Request) {
     );
   }
 
-  // Generate unique filename
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-  // Upload to Supabase Storage
-  const { error: uploadError } = await supabase.storage
-    .from("images")
-    .upload(fileName, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 });
+  // Upload to Cloudflare Images
+  let cloudflareResult: { id: string; variants: string[] };
+  try {
+    cloudflareResult = await uploadToCloudflare(file);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Upload failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from("images")
-    .getPublicUrl(fileName);
+  // Get the delivery URL (using 'large' variant as the stored URL)
+  const imageUrl = getCloudflareImageUrl(cloudflareResult.id, "large");
 
   // Generate short ID for user-friendly URLs (8 chars)
   const short_id = nanoid(8);
@@ -96,16 +88,16 @@ export async function POST(request: Request) {
       user_id: user.id,
       title: title || null,
       description: description || null,
-      image_url: urlData.publicUrl,
-      storage_path: fileName,
+      image_url: imageUrl,
+      storage_path: cloudflareResult.id, // Store CF image ID for cleanup
       short_id,
     })
     .select()
     .single();
 
   if (postError) {
-    // Clean up uploaded file if post creation fails
-    await supabase.storage.from("images").remove([fileName]);
+    // Clean up uploaded image if post creation fails
+    await deleteFromCloudflare(cloudflareResult.id);
     return NextResponse.json({ error: postError.message }, { status: 500 });
   }
 

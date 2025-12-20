@@ -14,16 +14,30 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
-// Convert Supabase storage URLs to local proxy to avoid Kong browser issues
-function getImageUrl(src: string, id: string | number): string {
+type ImageVariant = "thumbnail" | "medium" | "large" | "xlarge";
+
+// Get optimized image URL with Cloudflare Images variants
+function getImageUrl(src: string, id: string | number, variant: ImageVariant = "large"): string {
   if (src.includes("picsum")) {
     return `${src}?random=${id}`;
   }
-  // Extract the path from Supabase storage URL and use local proxy
+
+  const accountHash = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
+
+  // Handle Cloudflare Images URLs
+  if (src.includes("imagedelivery.net") && accountHash) {
+    const cfMatch = src.match(/imagedelivery\.net\/[^/]+\/([^/]+)/);
+    if (cfMatch) {
+      return `https://imagedelivery.net/${accountHash}/${cfMatch[1]}/${variant}`;
+    }
+  }
+
+  // Legacy: Supabase storage URLs via local proxy
   const match = src.match(/\/storage\/v1\/object\/public\/images\/(.+)$/);
   if (match) {
     return `/api/images/${match[1]}`;
   }
+
   return src;
 }
 
@@ -177,7 +191,7 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={getImageUrl(selectedImage.src, selectedImage.id)}
+              src={getImageUrl(selectedImage.src, selectedImage.id, "xlarge")}
               alt={selectedImage.title || `Artwork ${selectedImage.id}`}
               className="max-w-full max-h-[85vh] object-contain rounded-xl"
             />
@@ -389,7 +403,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={getImageUrl(item.src, item.id)}
+            src={getImageUrl(item.src, item.id, "medium")}
             alt={item.title || `Artwork ${item.id}`}
             className="w-full h-full object-cover"
             loading="lazy"

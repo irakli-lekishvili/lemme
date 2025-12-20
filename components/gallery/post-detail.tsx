@@ -19,14 +19,30 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-function getImageUrl(src: string, id: string): string {
+type ImageVariant = "thumbnail" | "medium" | "large" | "xlarge";
+
+// Get optimized image URL with Cloudflare Images variants
+function getImageUrl(src: string, id: string, variant: ImageVariant = "large"): string {
   if (src.includes("picsum")) {
     return `${src}?random=${id}`;
   }
+
+  const accountHash = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
+
+  // Handle Cloudflare Images URLs
+  if (src.includes("imagedelivery.net") && accountHash) {
+    const cfMatch = src.match(/imagedelivery\.net\/[^/]+\/([^/]+)/);
+    if (cfMatch) {
+      return `https://imagedelivery.net/${accountHash}/${cfMatch[1]}/${variant}`;
+    }
+  }
+
+  // Legacy: Supabase storage URLs via local proxy
   const match = src.match(/\/storage\/v1\/object\/public\/images\/(.+)$/);
   if (match) {
     return `/api/images/${match[1]}`;
   }
+
   return src;
 }
 
@@ -63,7 +79,7 @@ export function PostDetail({ post }: PostDetailProps) {
         <div className="bg-bg-base md:flex-1 md:max-w-[600px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={getImageUrl(post.image_url, post.id)}
+            src={getImageUrl(post.image_url, post.id, "large")}
             alt={post.title || `Post ${post.id}`}
             className="w-full h-auto object-contain"
           />
