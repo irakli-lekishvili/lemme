@@ -5,6 +5,23 @@ import { Bookmark } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+async function getPostImageCounts(supabase: Awaited<ReturnType<typeof createClient>>, postIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (postIds.length === 0) return counts;
+
+  const { data: imageCounts } = await supabase
+    .from("post_images")
+    .select("post_id")
+    .in("post_id", postIds);
+
+  if (imageCounts) {
+    for (const row of imageCounts) {
+      counts.set(row.post_id, (counts.get(row.post_id) || 0) + 1);
+    }
+  }
+  return counts;
+}
+
 async function getBookmarkedPosts(userId: string): Promise<ImageItem[]> {
   const supabase = await createClient();
 
@@ -28,6 +45,8 @@ async function getBookmarkedPosts(userId: string): Promise<ImageItem[]> {
     return [];
   }
 
+  const imageCounts = await getPostImageCounts(supabase, posts.map(p => p.id));
+
   // Maintain bookmark order
   const postMap = new Map(posts.map((p) => [p.id, p]));
   return postIds
@@ -39,6 +58,7 @@ async function getBookmarkedPosts(userId: string): Promise<ImageItem[]> {
       likes: post!.likes_count,
       title: post!.title,
       user_id: post!.user_id,
+      imageCount: imageCounts.get(post!.id) || 1,
     }));
 }
 

@@ -26,6 +26,23 @@ async function getCategories(): Promise<Category[]> {
 
 const PAGE_SIZE = 8;
 
+async function getPostImageCounts(supabase: Awaited<ReturnType<typeof createClient>>, postIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (postIds.length === 0) return counts;
+
+  const { data: imageCounts } = await supabase
+    .from("post_images")
+    .select("post_id")
+    .in("post_id", postIds);
+
+  if (imageCounts) {
+    for (const row of imageCounts) {
+      counts.set(row.post_id, (counts.get(row.post_id) || 0) + 1);
+    }
+  }
+  return counts;
+}
+
 async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; hasMore: boolean }> {
   try {
     const supabase = await createClient();
@@ -55,6 +72,8 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
             .range(0, PAGE_SIZE - 1);
 
           if (posts && posts.length > 0) {
+            const imageCounts = await getPostImageCounts(supabase, posts.map(p => p.id));
+
             return {
               posts: posts.map((post) => ({
                 id: post.id,
@@ -63,6 +82,7 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
                 title: post.title,
                 user_id: post.user_id,
                 short_id: post.short_id,
+                imageCount: imageCounts.get(post.id) || 1,
               })),
               hasMore: posts.length === PAGE_SIZE,
             };
@@ -79,6 +99,8 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
       .range(0, PAGE_SIZE - 1);
 
     if (posts && posts.length > 0) {
+      const imageCounts = await getPostImageCounts(supabase, posts.map(p => p.id));
+
       return {
         posts: posts.map((post) => ({
           id: post.id,
@@ -87,6 +109,7 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
           title: post.title,
           user_id: post.user_id,
           short_id: post.short_id,
+          imageCount: imageCounts.get(post.id) || 1,
         })),
         hasMore: posts.length === PAGE_SIZE,
       };
