@@ -303,6 +303,40 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
               className={`max-w-full max-h-[75vh] object-contain rounded-xl ${(!isModalImageLoaded || isLoadingGroup) ? "hidden" : ""}`}
               onLoad={() => setIsModalImageLoaded(true)}
             />
+
+            {/* Image navigation arrows - Instagram style over the image */}
+            {hasMultipleImages && isModalImageLoaded && !isLoadingGroup && (
+              <>
+                {/* Previous arrow */}
+                {groupIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalImageLoaded(false);
+                      setGroupIndex(groupIndex - 1);
+                    }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-gray-800" />
+                  </button>
+                )}
+
+                {/* Next arrow */}
+                {groupIndex < groupImages.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalImageLoaded(false);
+                      setGroupIndex(groupIndex + 1);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4 text-gray-800" />
+                  </button>
+                )}
+              </>
+            )}
+
             {isModalImageLoaded && !isLoadingGroup && (
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent rounded-b-xl">
                 <div className="flex items-center justify-between">
@@ -319,70 +353,25 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
             )}
           </div>
 
-          {/* Carousel dots at the bottom - outside the image */}
+          {/* Carousel dots at the bottom */}
           {hasMultipleImages && isModalImageLoaded && !isLoadingGroup && (
-            <nav
-              aria-label="Image navigation"
-              className="mt-4 flex items-center gap-3"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              {/* Previous arrow for group */}
-              <button
-                type="button"
-                disabled={groupIndex === 0}
-                onClick={() => {
-                  if (groupIndex > 0) {
+            <div className="mt-3 flex items-center gap-1.5 px-2.5 py-1.5 bg-black/50 backdrop-blur-sm rounded-full">
+              {groupImages.map((img, idx) => (
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setIsModalImageLoaded(false);
-                    setGroupIndex(groupIndex - 1);
-                  }
-                }}
-                className={`p-2 rounded-full transition-colors ${
-                  groupIndex === 0
-                    ? "text-white/30 cursor-not-allowed"
-                    : "text-white hover:bg-white/20"
-                }`}
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-
-              {/* Dots */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-black/50 backdrop-blur-sm rounded-full">
-                {groupImages.map((img, idx) => (
-                  <button
-                    key={img.id}
-                    type="button"
-                    onClick={() => {
-                      setIsModalImageLoaded(false);
-                      setGroupIndex(idx);
-                    }}
-                    className={`w-2.5 h-2.5 rounded-full transition-all ${
-                      idx === groupIndex ? "bg-white scale-110" : "bg-white/40 hover:bg-white/70"
-                    }`}
-                    aria-label={`Go to image ${idx + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* Next arrow for group */}
-              <button
-                type="button"
-                disabled={groupIndex === groupImages.length - 1}
-                onClick={() => {
-                  if (groupIndex < groupImages.length - 1) {
-                    setIsModalImageLoaded(false);
-                    setGroupIndex(groupIndex + 1);
-                  }
-                }}
-                className={`p-2 rounded-full transition-colors ${
-                  groupIndex === groupImages.length - 1
-                    ? "text-white/30 cursor-not-allowed"
-                    : "text-white hover:bg-white/20"
-                }`}
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </nav>
+                    setGroupIndex(idx);
+                  }}
+                  className={`w-1.5 h-1.5 rounded-full transition-all ${
+                    idx === groupIndex ? "bg-white" : "bg-white/40 hover:bg-white/70"
+                  }`}
+                  aria-label={`Go to image ${idx + 1}`}
+                />
+              ))}
+            </div>
           )}
         </div>
       )}
