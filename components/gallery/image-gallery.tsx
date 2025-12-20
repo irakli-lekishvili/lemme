@@ -5,7 +5,17 @@ import { useLikes } from "@/components/providers/likes-provider";
 import { useReports } from "@/components/providers/reports-provider";
 import { getPaginatedPosts, getPostImages } from "@/app/actions/posts";
 import { ReportModal } from "./report-modal";
-import { Bookmark, ChevronLeft, ChevronRight, Flag, Forward, Heart, Loader2, MoreHorizontal, X } from "lucide-react";
+import {
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  Flag,
+  Forward,
+  Heart,
+  Loader2,
+  MoreHorizontal,
+  X,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -17,7 +27,11 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 type ImageVariant = "thumbnail" | "medium" | "large" | "xlarge";
 
 // Get optimized image URL with Cloudflare Images variants
-function getImageUrl(src: string, id: string | number, variant: ImageVariant = "large"): string {
+function getImageUrl(
+  src: string,
+  id: string | number,
+  variant: ImageVariant = "large"
+): string {
   if (src.includes("picsum")) {
     return `${src}?random=${id}`;
   }
@@ -66,7 +80,11 @@ interface ImageGalleryProps {
   initialHasMore?: boolean;
 }
 
-export function ImageGallery({ images, categorySlug, initialHasMore = true }: ImageGalleryProps) {
+export function ImageGallery({
+  images,
+  categorySlug,
+  initialHasMore = true,
+}: ImageGalleryProps) {
   const [allImages, setAllImages] = useState<ImageItem[]>(images);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -79,7 +97,9 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
   const modalRef = useRef<HTMLDivElement>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
 
-  const currentPostIndex = selectedImage ? allImages.findIndex((img) => img.id === selectedImage.id) : -1;
+  const currentPostIndex = selectedImage
+    ? allImages.findIndex((img) => img.id === selectedImage.id)
+    : -1;
   const hasMultipleImages = groupImages.length > 1;
   const currentGroupImage = hasMultipleImages ? groupImages[groupIndex] : null;
 
@@ -87,7 +107,10 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
     if (isPending) return;
     startTransition(async () => {
       const nextPage = page + 1;
-      const { posts, hasMore: more } = await getPaginatedPosts(nextPage, categorySlug);
+      const { posts, hasMore: more } = await getPaginatedPosts(
+        nextPage,
+        categorySlug
+      );
       setAllImages((prev) => [...prev, ...posts]);
       setPage(nextPage);
       setHasMore(more);
@@ -176,7 +199,14 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
       const nextPost = allImages[currentPostIndex + 1];
       preloadImage(getImageUrl(nextPost.src, nextPost.id, "xlarge"));
     }
-  }, [selectedImage, currentPostIndex, allImages, groupImages, groupIndex, hasMultipleImages]);
+  }, [
+    selectedImage,
+    currentPostIndex,
+    allImages,
+    groupImages,
+    groupIndex,
+    hasMultipleImages,
+  ]);
 
   const goToPrevious = () => {
     // First navigate within group
@@ -220,7 +250,11 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
   // Determine which image URL to show in modal
   const getModalImageUrl = () => {
     if (currentGroupImage) {
-      return getImageUrl(currentGroupImage.image_url, currentGroupImage.id, "xlarge");
+      return getImageUrl(
+        currentGroupImage.image_url,
+        currentGroupImage.id,
+        "xlarge"
+      );
     }
     if (selectedImage) {
       return getImageUrl(selectedImage.src, selectedImage.id, "xlarge");
@@ -229,10 +263,13 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
   };
 
   // Check if we can navigate previous (either in group or to previous post)
-  const canGoPrevious = (hasMultipleImages && groupIndex > 0) || currentPostIndex > 0;
+  const canGoPrevious =
+    (hasMultipleImages && groupIndex > 0) || currentPostIndex > 0;
 
   // Check if we can navigate next (either in group or to next post)
-  const canGoNext = (hasMultipleImages && groupIndex < groupImages.length - 1) || currentPostIndex < allImages.length - 1;
+  const canGoNext =
+    (hasMultipleImages && groupIndex < groupImages.length - 1) ||
+    currentPostIndex < allImages.length - 1;
 
   return (
     <>
@@ -260,13 +297,13 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
           {canGoPrevious && (
             <button
               type="button"
-              className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-bg-base/80 backdrop-blur-sm rounded-full hover:bg-bg-hover transition-colors z-10"
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-white/70 rounded-lg shadow-md hover:bg-white/90 transition-colors z-10"
               onClick={(e) => {
                 e.stopPropagation();
                 goToPrevious();
               }}
             >
-              <ChevronLeft className="w-6 h-6 text-text-primary" />
+              <ChevronLeft className="w-5 h-5 text-gray-800" />
             </button>
           )}
 
@@ -274,13 +311,13 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
           {canGoNext && (
             <button
               type="button"
-              className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-bg-base/80 backdrop-blur-sm rounded-full hover:bg-bg-hover transition-colors z-10"
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-white/70 rounded-lg shadow-md hover:bg-white/90 transition-colors z-10"
               onClick={(e) => {
                 e.stopPropagation();
                 goToNext();
               }}
             >
-              <ChevronRight className="w-6 h-6 text-text-primary" />
+              <ChevronRight className="w-5 h-5 text-gray-800" />
             </button>
           )}
 
@@ -300,7 +337,9 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
             <img
               src={getModalImageUrl()}
               alt={selectedImage.title || `Artwork ${selectedImage.id}`}
-              className={`max-w-full max-h-[75vh] object-contain rounded-xl ${(!isModalImageLoaded || isLoadingGroup) ? "hidden" : ""}`}
+              className={`max-w-full max-h-[75vh] object-contain rounded-xl ${
+                !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
+              }`}
               onLoad={() => setIsModalImageLoaded(true)}
             />
 
@@ -315,7 +354,7 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
                       setIsModalImageLoaded(false);
                       setGroupIndex(groupIndex - 1);
                     }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-white/70 rounded-lg shadow-md hover:bg-white/90 transition-colors"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center bg-white/70 rounded-md shadow-md hover:bg-white/90 transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4 text-gray-800" />
                   </button>
@@ -329,7 +368,7 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
                       setIsModalImageLoaded(false);
                       setGroupIndex(groupIndex + 1);
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center bg-white/70 rounded-lg shadow-md hover:bg-white/90 transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center bg-white/70 rounded-md shadow-md hover:bg-white/90 transition-colors"
                   >
                     <ChevronRight className="w-4 h-4 text-gray-800" />
                   </button>
@@ -342,11 +381,20 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="avatar w-8 h-8" />
-                    <span className="text-sm font-medium text-text-primary">Anonymous</span>
+                    <span className="text-sm font-medium text-text-primary">
+                      Anonymous
+                    </span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <LikeButton postId={String(selectedImage.id)} likes={selectedImage.likes} size="lg" />
-                    <BookmarkButton postId={String(selectedImage.id)} size="lg" />
+                    <LikeButton
+                      postId={String(selectedImage.id)}
+                      likes={selectedImage.likes}
+                      size="lg"
+                    />
+                    <BookmarkButton
+                      postId={String(selectedImage.id)}
+                      size="lg"
+                    />
                   </div>
                 </div>
               </div>
@@ -366,7 +414,9 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
                     setGroupIndex(idx);
                   }}
                   className={`w-1.5 h-1.5 rounded-full transition-all ${
-                    idx === groupIndex ? "bg-white" : "bg-white/40 hover:bg-white/70"
+                    idx === groupIndex
+                      ? "bg-white"
+                      : "bg-white/40 hover:bg-white/70"
                   }`}
                   aria-label={`Go to image ${idx + 1}`}
                 />
@@ -379,7 +429,11 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
       {/* Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {allImages.map((item) => (
-          <ImageCard key={item.id} item={item} onExpand={() => handleImageSelect(item)} />
+          <ImageCard
+            key={item.id}
+            item={item}
+            onExpand={() => handleImageSelect(item)}
+          />
         ))}
       </div>
 
@@ -398,7 +452,15 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
   );
 }
 
-function LikeButton({ postId, likes, size = "sm" }: { postId: string; likes: number; size?: "sm" | "lg" }) {
+function LikeButton({
+  postId,
+  likes,
+  size = "sm",
+}: {
+  postId: string;
+  likes: number;
+  size?: "sm" | "lg";
+}) {
   const { isAuthenticated } = useBookmarks();
   const { isLiked, toggleLike, getLikeCount } = useLikes();
   const router = useRouter();
@@ -421,13 +483,23 @@ function LikeButton({ postId, likes, size = "sm" }: { postId: string; likes: num
         toggleLike(postId);
       }}
     >
-      <Heart className={`${iconSize} ${liked ? "fill-primary-400 text-primary-400" : ""}`} />
+      <Heart
+        className={`${iconSize} ${
+          liked ? "fill-primary-400 text-primary-400" : ""
+        }`}
+      />
       <span className={`${textSize} font-medium`}>{likeCount}</span>
     </button>
   );
 }
 
-function BookmarkButton({ postId, size = "sm" }: { postId: string; size?: "sm" | "lg" }) {
+function BookmarkButton({
+  postId,
+  size = "sm",
+}: {
+  postId: string;
+  size?: "sm" | "lg";
+}) {
   const { isBookmarked, toggleBookmark, isAuthenticated } = useBookmarks();
   const router = useRouter();
   const bookmarked = isBookmarked(postId);
@@ -447,7 +519,9 @@ function BookmarkButton({ postId, size = "sm" }: { postId: string; size?: "sm" |
       }}
     >
       <Bookmark
-        className={`${iconSize} ${bookmarked ? "fill-primary-400 text-primary-400" : "text-text-primary"}`}
+        className={`${iconSize} ${
+          bookmarked ? "fill-primary-400 text-primary-400" : "text-text-primary"
+        }`}
       />
     </button>
   );
@@ -549,13 +623,21 @@ function MoreOptionsMenu({ postId }: { postId: string }) {
   );
 }
 
-function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }) {
+function ImageCard({
+  item,
+  onExpand,
+}: {
+  item: ImageItem;
+  onExpand: () => void;
+}) {
   const heightClasses: Record<string, string> = {
     short: "aspect-[4/3]",
     medium: "aspect-square",
     tall: "aspect-[3/4]",
   };
-  const heightClass = item.height ? heightClasses[item.height] : "aspect-square";
+  const heightClass = item.height
+    ? heightClasses[item.height]
+    : "aspect-square";
   const imageCount = item.imageCount || 1;
 
   return (
@@ -582,11 +664,15 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
             {Array.from({ length: Math.min(imageCount, 5) }).map((_, idx) => (
               <span
                 key={`dot-${item.id}-${idx}`}
-                className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? "bg-white" : "bg-white/50"}`}
+                className={`w-1.5 h-1.5 rounded-full ${
+                  idx === 0 ? "bg-white" : "bg-white/50"
+                }`}
               />
             ))}
             {imageCount > 5 && (
-              <span className="text-[10px] text-white/80 ml-0.5">+{imageCount - 5}</span>
+              <span className="text-[10px] text-white/80 ml-0.5">
+                +{imageCount - 5}
+              </span>
             )}
           </div>
         )}
@@ -598,7 +684,9 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
               <span
                 key={cat.slug}
                 className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-black/60 backdrop-blur-sm text-white"
-                style={cat.color ? { backgroundColor: `${cat.color}cc` } : undefined}
+                style={
+                  cat.color ? { backgroundColor: `${cat.color}cc` } : undefined
+                }
               >
                 {cat.name}
               </span>
@@ -621,11 +709,17 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
           </div>
 
           {/* Bottom Info */}
-          <div className={`absolute bottom-0 left-0 right-0 p-4 pointer-events-auto ${imageCount > 1 ? "pb-10" : ""}`}>
+          <div
+            className={`absolute bottom-0 left-0 right-0 p-4 pointer-events-auto ${
+              imageCount > 1 ? "pb-10" : ""
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="avatar w-7 h-7" />
-                <span className="text-sm font-medium text-text-primary">Anonymous</span>
+                <span className="text-sm font-medium text-text-primary">
+                  Anonymous
+                </span>
               </div>
               <LikeButton postId={String(item.id)} likes={item.likes} />
             </div>
