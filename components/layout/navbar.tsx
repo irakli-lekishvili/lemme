@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Bookmark, Search, Sparkles } from "lucide-react";
+import { Bookmark, Search } from "lucide-react";
 import Link from "next/link";
 import { UserNav } from "../auth/user-nav";
 import { ViewToggle } from "./view-toggle";
@@ -35,20 +35,12 @@ export async function Navbar() {
         {/* Center: Search */}
         <div className="flex-1 max-w-xl mx-8 hidden lg:block">
           <div className="relative">
-            <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
             <input
               type="text"
               placeholder="Try 'cyberpunk aesthetic' or 'ethereal portrait'"
-              className="input pl-11 pr-20 py-2.5 bg-bg-elevated"
+              className="input !pl-12 py-2.5 bg-bg-elevated"
             />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              <button
-                type="button"
-                className="p-1.5 hover:bg-bg-hover rounded-md transition-colors"
-              >
-                <Search className="w-4 h-4 text-text-muted" />
-              </button>
-            </div>
           </div>
         </div>
 
