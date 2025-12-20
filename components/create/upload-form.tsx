@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { Check, ImagePlus, Loader2, Upload, X } from "lucide-react";
+import { Check, GripVertical, ImagePlus, Loader2, Plus, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -12,11 +12,18 @@ type Category = {
   color: string | null;
 };
 
+type ImageFile = {
+  id: string;
+  file: File;
+  preview: string;
+};
+
+const MAX_IMAGES = 10;
+
 export function UploadForm() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [images, setImages] = useState<ImageFile[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -24,6 +31,7 @@ export function UploadForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -56,36 +64,61 @@ export function UploadForm() {
     );
   };
 
-  const handleFile = useCallback((selectedFile: File) => {
+  const validateFile = useCallback((file: File): string | null => {
     const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    if (!validTypes.includes(selectedFile.type)) {
-      setError("Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.");
-      return;
+    if (!validTypes.includes(file.type)) {
+      return "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.";
     }
 
     const maxSize = 10 * 1024 * 1024;
-    if (selectedFile.size > maxSize) {
-      setError("File too large. Maximum size is 10MB.");
+    if (file.size > maxSize) {
+      return "File too large. Maximum size is 10MB.";
+    }
+
+    return null;
+  }, []);
+
+  const handleFiles = useCallback((selectedFiles: FileList | File[]) => {
+    const filesArray = Array.from(selectedFiles);
+    const remainingSlots = MAX_IMAGES - images.length;
+
+    if (filesArray.length > remainingSlots) {
+      setError(`You can only add ${remainingSlots} more image${remainingSlots !== 1 ? 's' : ''}. Maximum is ${MAX_IMAGES}.`);
       return;
     }
 
-    setError(null);
-    setFile(selectedFile);
-    const reader = new FileReader();
-    reader.onload = (e) => setPreview(e.target?.result as string);
-    reader.readAsDataURL(selectedFile);
-  }, []);
+    const newImages: ImageFile[] = [];
+    let hasError = false;
+
+    for (const file of filesArray) {
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        hasError = true;
+        break;
+      }
+
+      const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const preview = URL.createObjectURL(file);
+      newImages.push({ id, file, preview });
+    }
+
+    if (!hasError) {
+      setError(null);
+      setImages((prev) => [...prev, ...newImages]);
+    }
+  }, [images.length, validateFile]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile) {
-        handleFile(droppedFile);
+      const droppedFiles = e.dataTransfer.files;
+      if (droppedFiles.length > 0) {
+        handleFiles(droppedFiles);
       }
     },
-    [handleFile]
+    [handleFiles]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -98,15 +131,52 @@ export function UploadForm() {
     setIsDragging(false);
   }, []);
 
+  const removeImage = useCallback((id: string) => {
+    setImages((prev) => {
+      const image = prev.find((img) => img.id === id);
+      if (image) {
+        URL.revokeObjectURL(image.preview);
+      }
+      return prev.filter((img) => img.id !== id);
+    });
+    setError(null);
+  }, []);
+
+  // Drag and drop reordering
+  const handleImageDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleImageDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    setImages((prev) => {
+      const newImages = [...prev];
+      const draggedImage = newImages[draggedIndex];
+      newImages.splice(draggedIndex, 1);
+      newImages.splice(index, 0, draggedImage);
+      return newImages;
+    });
+    setDraggedIndex(index);
+  };
+
+  const handleImageDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return;
+    if (images.length === 0) return;
 
     setIsUploading(true);
     setError(null);
 
     const formData = new FormData();
-    formData.append("file", file);
+    images.forEach((img, index) => {
+      formData.append(`file_${index}`, img.file);
+    });
+    formData.append("fileCount", images.length.toString());
     formData.append("title", title);
     formData.append("description", description);
     formData.append("categories", JSON.stringify(selectedCategories));
@@ -122,6 +192,11 @@ export function UploadForm() {
         throw new Error(data.error || "Failed to upload");
       }
 
+      // Clean up previews
+      images.forEach((img) => {
+        URL.revokeObjectURL(img.preview);
+      });
+
       router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -130,9 +205,11 @@ export function UploadForm() {
     }
   };
 
-  const clearFile = () => {
-    setFile(null);
-    setPreview(null);
+  const clearAllImages = () => {
+    images.forEach((img) => {
+      URL.revokeObjectURL(img.preview);
+    });
+    setImages([]);
     setError(null);
   };
 
@@ -147,8 +224,9 @@ export function UploadForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Upload Area */}
-      {!preview ? (
+      {images.length === 0 ? (
         <div
+          role="presentation"
           className={`relative border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
             isDragging
               ? "border-primary-500 bg-primary-500/10"
@@ -161,9 +239,10 @@ export function UploadForm() {
           <input
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp"
+            multiple
             onChange={(e) => {
-              const selectedFile = e.target.files?.[0];
-              if (selectedFile) handleFile(selectedFile);
+              const files = e.target.files;
+              if (files && files.length > 0) handleFiles(files);
             }}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
@@ -173,32 +252,112 @@ export function UploadForm() {
             </div>
             <div>
               <p className="text-lg font-medium text-text-primary">
-                Drop your image here
+                Drop your images here
               </p>
               <p className="text-sm text-text-muted mt-1">
                 or click to browse
               </p>
             </div>
             <p className="text-xs text-text-muted">
-              JPEG, PNG, GIF, WebP up to 10MB
+              JPEG, PNG, GIF, WebP up to 10MB · Max {MAX_IMAGES} images
             </p>
           </div>
         </div>
       ) : (
-        <div className="relative rounded-xl overflow-hidden bg-bg-elevated">
-          <button
-            type="button"
-            onClick={clearFile}
-            className="absolute top-4 right-4 p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors z-10"
-          >
-            <X className="w-5 h-5 text-text-primary" />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={preview}
-            alt="Preview"
-            className="w-full max-h-[400px] object-contain"
-          />
+        <div className="space-y-4">
+          {/* Image Preview Grid */}
+          <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3 list-none p-0 m-0">
+            {images.map((img, index) => (
+              <li
+                key={img.id}
+                draggable
+                onDragStart={() => handleImageDragStart(index)}
+                onDragOver={(e) => handleImageDragOver(e, index)}
+                onDragEnd={handleImageDragEnd}
+                className={`relative group rounded-lg overflow-hidden bg-bg-elevated aspect-square ${
+                  draggedIndex === index ? "opacity-50" : ""
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.preview}
+                  alt={`Preview ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+
+                {/* Position badge */}
+                <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/70 text-white text-xs font-medium flex items-center justify-center">
+                  {index + 1}
+                </div>
+
+                {/* Drag handle */}
+                <div className="absolute top-2 right-10 p-1.5 bg-bg-base/80 backdrop-blur-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity cursor-grab">
+                  <GripVertical className="w-4 h-4 text-text-primary" />
+                </div>
+
+                {/* Remove button */}
+                <button
+                  type="button"
+                  onClick={() => removeImage(img.id)}
+                  className="absolute top-2 right-2 p-1.5 bg-bg-base/80 backdrop-blur-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-bg-hover"
+                >
+                  <X className="w-4 h-4 text-text-primary" />
+                </button>
+
+                {/* First image indicator */}
+                {index === 0 && (
+                  <div className="absolute bottom-2 left-2 px-2 py-1 bg-primary-500/90 backdrop-blur-sm rounded text-[10px] font-medium text-white">
+                    Cover
+                  </div>
+                )}
+              </li>
+            ))}
+
+            {/* Add more button */}
+            {images.length < MAX_IMAGES && (
+              <li className="list-none">
+                <label
+                  className={`relative aspect-square rounded-lg border-2 border-dashed transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 ${
+                    isDragging
+                      ? "border-primary-500 bg-primary-500/10"
+                      : "border-border-subtle hover:border-border-default hover:bg-bg-elevated"
+                  }`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                >
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    multiple
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (files && files.length > 0) handleFiles(files);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <Plus className="w-6 h-6 text-text-muted" />
+                  <span className="text-xs text-text-muted">Add more</span>
+                </label>
+              </li>
+            )}
+          </ul>
+
+          {/* Clear all button */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={clearAllImages}
+              className="text-sm text-text-muted hover:text-text-primary transition-colors"
+            >
+              Clear all
+            </button>
+          </div>
+
+          {/* Reorder hint */}
+          <p className="text-xs text-text-muted text-center">
+            Drag images to reorder · First image is the cover
+          </p>
         </div>
       )}
 
@@ -288,7 +447,7 @@ export function UploadForm() {
       {/* Submit */}
       <button
         type="submit"
-        disabled={!file || selectedCategories.length === 0 || isUploading}
+        disabled={images.length === 0 || selectedCategories.length === 0 || isUploading}
         className="w-full btn btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
       >
         {isUploading ? (
@@ -299,7 +458,7 @@ export function UploadForm() {
         ) : (
           <>
             <Upload className="w-5 h-5" />
-            Publish
+            Publish {images.length > 1 ? `(${images.length} images)` : ""}
           </>
         )}
       </button>

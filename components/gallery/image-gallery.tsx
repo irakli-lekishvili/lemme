@@ -3,7 +3,7 @@
 import { useBookmarks } from "@/components/providers/bookmarks-provider";
 import { useLikes } from "@/components/providers/likes-provider";
 import { useReports } from "@/components/providers/reports-provider";
-import { getPaginatedPosts } from "@/app/actions/posts";
+import { getPaginatedPosts, getPostImages } from "@/app/actions/posts";
 import { ReportModal } from "./report-modal";
 import { Bookmark, ChevronLeft, ChevronRight, Flag, Forward, Heart, Loader2, MoreHorizontal, X } from "lucide-react";
 import {
@@ -40,6 +40,13 @@ export type ImageCategory = {
   color: string | null;
 };
 
+export type PostImage = {
+  id: string;
+  image_url: string;
+  storage_path: string;
+  position: number;
+};
+
 export type ImageItem = {
   id: string | number;
   src: string;
@@ -49,6 +56,8 @@ export type ImageItem = {
   user_id?: string;
   short_id?: string | null;
   categories?: ImageCategory[];
+  imageCount?: number;
+  images?: PostImage[];
 };
 
 interface ImageGalleryProps {
@@ -64,10 +73,15 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
   const [isPending, startTransition] = useTransition();
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
   const [isModalImageLoaded, setIsModalImageLoaded] = useState(false);
+  const [groupImages, setGroupImages] = useState<PostImage[]>([]);
+  const [groupIndex, setGroupIndex] = useState(0);
+  const [isLoadingGroup, setIsLoadingGroup] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
 
-  const currentIndex = selectedImage ? allImages.findIndex((img) => img.id === selectedImage.id) : -1;
+  const currentPostIndex = selectedImage ? allImages.findIndex((img) => img.id === selectedImage.id) : -1;
+  const hasMultipleImages = groupImages.length > 1;
+  const currentGroupImage = hasMultipleImages ? groupImages[groupIndex] : null;
 
   const loadMore = useCallback(() => {
     if (isPending) return;
@@ -111,39 +125,84 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
     }
   }, [selectedImage]);
 
+  // Load group images when selecting a post with multiple images
+  useEffect(() => {
+    if (!selectedImage) {
+      setGroupImages([]);
+      setGroupIndex(0);
+      return;
+    }
+
+    const imageCount = selectedImage.imageCount || 1;
+    if (imageCount > 1) {
+      setIsLoadingGroup(true);
+      getPostImages(String(selectedImage.id))
+        .then((images) => {
+          setGroupImages(images);
+          setGroupIndex(0);
+        })
+        .finally(() => {
+          setIsLoadingGroup(false);
+        });
+    } else {
+      setGroupImages([]);
+      setGroupIndex(0);
+    }
+  }, [selectedImage]);
+
   // Preload adjacent images for smoother navigation
   useEffect(() => {
-    if (!selectedImage || currentIndex === -1) return;
+    if (!selectedImage || currentPostIndex === -1) return;
 
     const preloadImage = (src: string) => {
       const img = new Image();
       img.src = src;
     };
 
-    // Preload previous image
-    if (currentIndex > 0) {
-      const prevImage = allImages[currentIndex - 1];
-      preloadImage(getImageUrl(prevImage.src, prevImage.id, "xlarge"));
+    // Preload next image in group
+    if (hasMultipleImages && groupIndex < groupImages.length - 1) {
+      const nextImg = groupImages[groupIndex + 1];
+      preloadImage(getImageUrl(nextImg.image_url, nextImg.id, "xlarge"));
     }
 
-    // Preload next image
-    if (currentIndex < allImages.length - 1) {
-      const nextImage = allImages[currentIndex + 1];
-      preloadImage(getImageUrl(nextImage.src, nextImage.id, "xlarge"));
+    // Preload previous image in group
+    if (hasMultipleImages && groupIndex > 0) {
+      const prevImg = groupImages[groupIndex - 1];
+      preloadImage(getImageUrl(prevImg.image_url, prevImg.id, "xlarge"));
     }
-  }, [selectedImage, currentIndex, allImages]);
+
+    // Preload next post's cover
+    if (currentPostIndex < allImages.length - 1) {
+      const nextPost = allImages[currentPostIndex + 1];
+      preloadImage(getImageUrl(nextPost.src, nextPost.id, "xlarge"));
+    }
+  }, [selectedImage, currentPostIndex, allImages, groupImages, groupIndex, hasMultipleImages]);
 
   const goToPrevious = () => {
-    if (currentIndex > 0) {
+    // First navigate within group
+    if (hasMultipleImages && groupIndex > 0) {
       setIsModalImageLoaded(false);
-      setSelectedImage(allImages[currentIndex - 1]);
+      setGroupIndex(groupIndex - 1);
+      return;
+    }
+    // Then go to previous post
+    if (currentPostIndex > 0) {
+      setIsModalImageLoaded(false);
+      setSelectedImage(allImages[currentPostIndex - 1]);
     }
   };
 
   const goToNext = () => {
-    if (currentIndex < allImages.length - 1) {
+    // First navigate within group
+    if (hasMultipleImages && groupIndex < groupImages.length - 1) {
       setIsModalImageLoaded(false);
-      setSelectedImage(allImages[currentIndex + 1]);
+      setGroupIndex(groupIndex + 1);
+      return;
+    }
+    // Then go to next post
+    if (currentPostIndex < allImages.length - 1) {
+      setIsModalImageLoaded(false);
+      setSelectedImage(allImages[currentPostIndex + 1]);
     }
   };
 
@@ -157,6 +216,23 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
     if (e.key === "ArrowLeft") goToPrevious();
     if (e.key === "ArrowRight") goToNext();
   };
+
+  // Determine which image URL to show in modal
+  const getModalImageUrl = () => {
+    if (currentGroupImage) {
+      return getImageUrl(currentGroupImage.image_url, currentGroupImage.id, "xlarge");
+    }
+    if (selectedImage) {
+      return getImageUrl(selectedImage.src, selectedImage.id, "xlarge");
+    }
+    return "";
+  };
+
+  // Check if we can navigate previous (either in group or to previous post)
+  const canGoPrevious = (hasMultipleImages && groupIndex > 0) || currentPostIndex > 0;
+
+  // Check if we can navigate next (either in group or to next post)
+  const canGoNext = (hasMultipleImages && groupIndex < groupImages.length - 1) || currentPostIndex < allImages.length - 1;
 
   return (
     <>
@@ -181,7 +257,7 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
           </button>
 
           {/* Previous button */}
-          {currentIndex > 0 && (
+          {canGoPrevious && (
             <button
               type="button"
               className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors"
@@ -195,7 +271,7 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
           )}
 
           {/* Next button */}
-          {currentIndex < allImages.length - 1 && (
+          {canGoNext && (
             <button
               type="button"
               className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-bg-base/80 backdrop-blur-sm rounded-lg hover:bg-bg-hover transition-colors"
@@ -213,20 +289,41 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
             onClick={(e) => e.stopPropagation()}
           >
             {/* Skeleton loader */}
-            {!isModalImageLoaded && (
+            {(!isModalImageLoaded || isLoadingGroup) && (
               <div className="min-w-[300px] min-h-[400px] md:min-w-[500px] md:min-h-[600px] rounded-xl bg-bg-elevated overflow-hidden relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
               </div>
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={getImageUrl(selectedImage.src, selectedImage.id, "xlarge")}
+              src={getModalImageUrl()}
               alt={selectedImage.title || `Artwork ${selectedImage.id}`}
-              className={`max-w-full max-h-[85vh] object-contain rounded-xl ${!isModalImageLoaded ? "hidden" : ""}`}
+              className={`max-w-full max-h-[85vh] object-contain rounded-xl ${(!isModalImageLoaded || isLoadingGroup) ? "hidden" : ""}`}
               onLoad={() => setIsModalImageLoaded(true)}
             />
-            {isModalImageLoaded && (
+            {isModalImageLoaded && !isLoadingGroup && (
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent rounded-b-xl">
+                {/* Carousel dots for grouped images */}
+                {hasMultipleImages && (
+                  <div className="flex justify-center mb-3">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/50 backdrop-blur-sm rounded-full">
+                      {groupImages.map((img, idx) => (
+                        <button
+                          key={img.id}
+                          type="button"
+                          onClick={() => {
+                            setIsModalImageLoaded(false);
+                            setGroupIndex(idx);
+                          }}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            idx === groupIndex ? "bg-white scale-110" : "bg-white/50 hover:bg-white/70"
+                          }`}
+                          aria-label={`Go to image ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="avatar w-8 h-8" />
@@ -423,6 +520,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
     tall: "aspect-[3/4]",
   };
   const heightClass = item.height ? heightClasses[item.height] : "aspect-square";
+  const imageCount = item.imageCount || 1;
 
   return (
     <div className="group">
@@ -441,6 +539,21 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
             loading="lazy"
           />
         </button>
+
+        {/* Carousel Dots - Always visible for multi-image posts */}
+        {imageCount > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 bg-black/50 backdrop-blur-sm rounded-full">
+            {Array.from({ length: Math.min(imageCount, 5) }).map((_, idx) => (
+              <span
+                key={`dot-${item.id}-${idx}`}
+                className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? "bg-white" : "bg-white/50"}`}
+              />
+            ))}
+            {imageCount > 5 && (
+              <span className="text-[10px] text-white/80 ml-0.5">+{imageCount - 5}</span>
+            )}
+          </div>
+        )}
 
         {/* Category Tags - Always visible */}
         {item.categories && item.categories.length > 0 && (
@@ -472,7 +585,7 @@ function ImageCard({ item, onExpand }: { item: ImageItem; onExpand: () => void }
           </div>
 
           {/* Bottom Info */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 pointer-events-auto">
+          <div className={`absolute bottom-0 left-0 right-0 p-4 pointer-events-auto ${imageCount > 1 ? "pb-10" : ""}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="avatar w-7 h-7" />

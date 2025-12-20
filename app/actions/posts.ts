@@ -2,6 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 
+export type PostImage = {
+  id: string;
+  image_url: string;
+  storage_path: string;
+  position: number;
+};
+
 export type PostItem = {
   id: string;
   src: string;
@@ -9,9 +16,31 @@ export type PostItem = {
   title?: string;
   user_id?: string;
   short_id?: string | null;
+  imageCount?: number;
+  images?: PostImage[];
 };
 
 const PAGE_SIZE = 8;
+
+async function getPostImageCounts(supabase: Awaited<ReturnType<typeof createClient>>, postIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+
+  if (postIds.length === 0) return counts;
+
+  const { data: imageCounts } = await supabase
+    .from("post_images")
+    .select("post_id")
+    .in("post_id", postIds);
+
+  if (imageCounts) {
+    // Count occurrences of each post_id
+    for (const row of imageCounts) {
+      counts.set(row.post_id, (counts.get(row.post_id) || 0) + 1);
+    }
+  }
+
+  return counts;
+}
 
 export async function getPaginatedPosts(
   page: number,
@@ -43,6 +72,8 @@ export async function getPaginatedPosts(
           .range(offset, offset + PAGE_SIZE - 1);
 
         if (posts) {
+          const imageCounts = await getPostImageCounts(supabase, posts.map(p => p.id));
+
           return {
             posts: posts.map((post) => ({
               id: post.id,
@@ -51,6 +82,7 @@ export async function getPaginatedPosts(
               title: post.title,
               user_id: post.user_id,
               short_id: post.short_id,
+              imageCount: imageCounts.get(post.id) || 1,
             })),
             hasMore: posts.length === PAGE_SIZE,
           };
@@ -68,6 +100,8 @@ export async function getPaginatedPosts(
     .range(offset, offset + PAGE_SIZE - 1);
 
   if (posts) {
+    const imageCounts = await getPostImageCounts(supabase, posts.map(p => p.id));
+
     return {
       posts: posts.map((post) => ({
         id: post.id,
@@ -76,10 +110,23 @@ export async function getPaginatedPosts(
         title: post.title,
         user_id: post.user_id,
         short_id: post.short_id,
+        imageCount: imageCounts.get(post.id) || 1,
       })),
       hasMore: posts.length === PAGE_SIZE,
     };
   }
 
   return { posts: [], hasMore: false };
+}
+
+export async function getPostImages(postId: string): Promise<PostImage[]> {
+  const supabase = await createClient();
+
+  const { data: images } = await supabase
+    .from("post_images")
+    .select("id, image_url, storage_path, position")
+    .eq("post_id", postId)
+    .order("position", { ascending: true });
+
+  return images || [];
 }
