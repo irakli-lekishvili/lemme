@@ -63,6 +63,7 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isPending, startTransition] = useTransition();
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null);
+  const [isModalImageLoaded, setIsModalImageLoaded] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const loaderRef = useRef<HTMLDivElement>(null);
 
@@ -112,14 +113,21 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
 
   const goToPrevious = () => {
     if (currentIndex > 0) {
+      setIsModalImageLoaded(false);
       setSelectedImage(allImages[currentIndex - 1]);
     }
   };
 
   const goToNext = () => {
     if (currentIndex < allImages.length - 1) {
+      setIsModalImageLoaded(false);
       setSelectedImage(allImages[currentIndex + 1]);
     }
+  };
+
+  const handleImageSelect = (image: ImageItem) => {
+    setIsModalImageLoaded(false);
+    setSelectedImage(image);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -182,24 +190,33 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
             className="relative max-w-[90vw] max-h-[90vh] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Skeleton loader */}
+            {!isModalImageLoaded && (
+              <div className="min-w-[300px] min-h-[400px] md:min-w-[500px] md:min-h-[600px] rounded-xl bg-bg-elevated overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+              </div>
+            )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={getImageUrl(selectedImage.src, selectedImage.id, "xlarge")}
               alt={selectedImage.title || `Artwork ${selectedImage.id}`}
-              className="max-w-full max-h-[85vh] object-contain rounded-xl"
+              className={`max-w-full max-h-[85vh] object-contain rounded-xl ${!isModalImageLoaded ? "hidden" : ""}`}
+              onLoad={() => setIsModalImageLoaded(true)}
             />
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent rounded-b-xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="avatar w-8 h-8" />
-                  <span className="text-sm font-medium text-text-primary">Anonymous</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <LikeButton postId={String(selectedImage.id)} likes={selectedImage.likes} size="lg" />
-                  <BookmarkButton postId={String(selectedImage.id)} size="lg" />
+            {isModalImageLoaded && (
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent rounded-b-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="avatar w-8 h-8" />
+                    <span className="text-sm font-medium text-text-primary">Anonymous</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <LikeButton postId={String(selectedImage.id)} likes={selectedImage.likes} size="lg" />
+                    <BookmarkButton postId={String(selectedImage.id)} size="lg" />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -207,7 +224,7 @@ export function ImageGallery({ images, categorySlug, initialHasMore = true }: Im
       {/* Grid - Masonry */}
       <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
         {allImages.map((item) => (
-          <ImageCard key={item.id} item={item} onExpand={() => setSelectedImage(item)} />
+          <ImageCard key={item.id} item={item} onExpand={() => handleImageSelect(item)} />
         ))}
       </div>
 
