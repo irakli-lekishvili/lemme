@@ -38,7 +38,7 @@ export async function Navbar() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
             <input
               type="text"
-              placeholder="Try 'cyberpunk aesthetic' or 'ethereal portrait'"
+              placeholder="Search..."
               className="input !pl-12 py-2.5 bg-bg-elevated"
             />
           </div>
