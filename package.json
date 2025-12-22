@@ -14,7 +14,8 @@
     "generate-supabase-types": "npx supabase@latest gen types typescript --local > database.types.ts",
     "dev:migrate": "npx supabase@latest migration up",
     "seed": "tsx scripts/db-seed.ts",
-    "supabase": "npx supabase@latest start"
+    "supabase:start": "npx supabase@latest start",
+    "supabase:restart": "npx supabase stop && npx supabase start"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
