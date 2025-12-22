@@ -219,7 +219,15 @@ pass = "env(RESEND_API_KEY)"
 admin_email = "noreply@lemme.love"
 sender_name = "Lemme Love"
 
-# Uncomment to customize email template
+# Custom email templates
+[auth.email.template.confirmation]
+subject = "Confirm your email for Lemme Love"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Lemme Love password"
+content_path = "./supabase/templates/recovery.html"
+
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
