@@ -57,6 +57,8 @@ type PostData = {
   user_id: string | null;
   created_at: string;
   short_id: string | null;
+  media_type?: "image" | "video" | "gif" | null;
+  thumbnail_url?: string | null;
 };
 
 interface PostDetailProps {
@@ -64,18 +66,44 @@ interface PostDetailProps {
 }
 
 export function PostDetail({ post }: PostDetailProps) {
+  const isVideo = post.media_type === "video";
+
+  // Get the video URL for playback
+  const getVideoUrl = () => {
+    const streamSubdomain = process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN;
+    if (!streamSubdomain) return post.image_url;
+
+    // Extract video ID from the URL if it's a Cloudflare Stream URL
+    const match = post.image_url.match(/cloudflarestream\.com\/([^/]+)/);
+    if (match) {
+      return `https://customer-${streamSubdomain}.cloudflarestream.com/${match[1]}/manifest/video.m3u8`;
+    }
+    return post.image_url;
+  };
+
   return (
     <div className="bg-bg-elevated border border-border-subtle rounded-xl overflow-hidden">
       {/* Desktop layout: side by side */}
       <div className="flex flex-col md:flex-row">
-        {/* Image */}
+        {/* Media */}
         <div className="bg-bg-base md:flex-1 md:max-w-[600px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={getImageUrl(post.image_url, post.id, "large")}
-            alt={post.title || `Post ${post.id}`}
-            className="w-full h-auto object-contain"
-          />
+          {isVideo ? (
+            <video
+              src={getVideoUrl()}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-auto object-contain"
+            />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={getImageUrl(post.image_url, post.id, "large")}
+              alt={post.title || `Post ${post.id}`}
+              className="w-full h-auto object-contain"
+            />
+          )}
         </div>
 
         {/* Details sidebar */}

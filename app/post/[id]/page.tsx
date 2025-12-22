@@ -13,6 +13,8 @@ type PostData = {
   user_id: string | null;
   created_at: string;
   short_id: string | null;
+  media_type: "image" | "video" | "gif" | null;
+  thumbnail_url: string | null;
 };
 
 type RelatedPost = {
@@ -20,6 +22,8 @@ type RelatedPost = {
   image_url: string;
   short_id: string | null;
   title: string | null;
+  media_type: "image" | "video" | "gif" | null;
+  thumbnail_url: string | null;
 };
 
 async function getPost(id: string): Promise<PostData | null> {
@@ -38,7 +42,7 @@ async function getPost(id: string): Promise<PostData | null> {
     if (isUuid) {
       const { data } = await supabase
         .from("posts")
-        .select("id, image_url, likes_count, title, description, user_id, created_at, short_id")
+        .select("id, image_url, likes_count, title, description, user_id, created_at, short_id, media_type, thumbnail_url")
         .eq("id", id)
         .single();
       post = data;
@@ -46,7 +50,7 @@ async function getPost(id: string): Promise<PostData | null> {
       // Try finding by short_id
       const { data } = await supabase
         .from("posts")
-        .select("id, image_url, likes_count, title, description, user_id, created_at, short_id")
+        .select("id, image_url, likes_count, title, description, user_id, created_at, short_id, media_type, thumbnail_url")
         .eq("short_id", id)
         .single();
       post = data;
@@ -91,7 +95,7 @@ async function getRelatedPosts(postId: string): Promise<RelatedPost[]> {
     // Fetch the related posts
     const { data: posts } = await supabase
       .from("posts")
-      .select("id, image_url, short_id, title")
+      .select("id, image_url, short_id, title, media_type, thumbnail_url")
       .in("id", relatedPostIds)
       .limit(8);
 

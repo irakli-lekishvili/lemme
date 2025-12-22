@@ -65,7 +65,7 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
           const postIds = postCategories.map((pc) => pc.post_id);
           const { data: posts } = await supabase
             .from("posts")
-            .select("id, image_url, likes_count, title, user_id, short_id")
+            .select("id, image_url, likes_count, title, user_id, short_id, media_type, thumbnail_url")
             .in("id", postIds)
             .order("created_at", { ascending: false })
             .range(0, PAGE_SIZE - 1);
@@ -82,6 +82,8 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
                 user_id: post.user_id,
                 short_id: post.short_id,
                 imageCount: imageCounts.get(post.id) || 1,
+                media_type: post.media_type,
+                thumbnail_url: post.thumbnail_url,
               })),
               hasMore: posts.length === PAGE_SIZE,
             };
@@ -93,7 +95,7 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
 
     const { data: posts } = await supabase
       .from("posts")
-      .select("id, image_url, likes_count, title, user_id, short_id")
+      .select("id, image_url, likes_count, title, user_id, short_id, media_type, thumbnail_url")
       .order("created_at", { ascending: false })
       .range(0, PAGE_SIZE - 1);
 
@@ -109,6 +111,8 @@ async function getPosts(categorySlug?: string): Promise<{ posts: ImageItem[]; ha
           user_id: post.user_id,
           short_id: post.short_id,
           imageCount: imageCounts.get(post.id) || 1,
+          media_type: post.media_type,
+          thumbnail_url: post.thumbnail_url,
         })),
         hasMore: posts.length === PAGE_SIZE,
       };

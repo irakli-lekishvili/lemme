@@ -10,6 +10,7 @@ import {
   Forward,
   Heart,
   MoreHorizontal,
+  Play,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -55,6 +56,8 @@ export type TimelineItem = {
   short_id?: string;
   categories?: TimelineCategory[];
   created_at?: string;
+  media_type?: "image" | "video" | "gif";
+  thumbnail_url?: string | null;
 };
 
 interface TimelineGalleryProps {
@@ -83,7 +86,32 @@ export function TimelineGallery({ posts }: TimelineGalleryProps) {
 }
 
 function TimelinePost({ post }: { post: TimelineItem }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [mediaLoaded, setMediaLoaded] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const isVideo = post.media_type === "video";
+
+  // Get the display URL for images
+  const getDisplayUrl = () => {
+    return getImageUrl(post.src, post.id, "medium");
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {
+        // Autoplay might be blocked, ignore error
+      });
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
 
   return (
     <article className="bg-bg-elevated border border-border-subtle rounded-lg overflow-hidden">
@@ -105,21 +133,52 @@ function TimelinePost({ post }: { post: TimelineItem }) {
         <MoreOptionsMenu postId={String(post.id)} />
       </div>
 
-      {/* Image */}
-      <div className="relative bg-bg-base aspect-square">
-        {!imageLoaded && (
+      {/* Media */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+      <div
+        className="relative bg-bg-base aspect-square"
+        onMouseEnter={isVideo ? handleMouseEnter : undefined}
+        onMouseLeave={isVideo ? handleMouseLeave : undefined}
+      >
+        {!mediaLoaded && (
           <div className="absolute inset-0 animate-pulse bg-bg-hover" />
         )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={getImageUrl(post.src, post.id, "medium")}
-          alt={post.title || `Post ${post.id}`}
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
-            imageLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          loading="lazy"
-          onLoad={() => setImageLoaded(true)}
-        />
+        {isVideo ? (
+          <>
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video
+              ref={videoRef}
+              src={post.src}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${
+                mediaLoaded ? "opacity-100" : "opacity-0"
+              }`}
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              onLoadedData={() => setMediaLoaded(true)}
+            />
+            {/* Play icon overlay - hide when hovering/playing */}
+            {!isHovering && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center">
+                  <Play className="w-8 h-8 text-white fill-white ml-1" />
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={getDisplayUrl()}
+            alt={post.title || `Post ${post.id}`}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              mediaLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            loading="lazy"
+            onLoad={() => setMediaLoaded(true)}
+          />
+        )}
       </div>
 
       {/* Actions */}

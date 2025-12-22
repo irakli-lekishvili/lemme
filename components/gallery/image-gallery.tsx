@@ -375,8 +375,9 @@ export function ImageGallery({
               /* eslint-disable-next-line jsx-a11y/media-has-caption */
               <video
                 src={getModalMediaUrl()}
-                controls
                 autoPlay
+                loop
+                muted
                 playsInline
                 className={`max-w-full max-h-[75vh] object-contain rounded-xl ${
                   !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
@@ -682,6 +683,8 @@ function ImageCard({
   item: ImageItem;
   onExpand: () => void;
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isHovering, setIsHovering] = useState(false);
   const heightClasses: Record<string, string> = {
     short: "aspect-[4/3]",
     medium: "aspect-square",
@@ -693,34 +696,69 @@ function ImageCard({
   const imageCount = item.imageCount || 1;
   const itemIsVideo = isVideo(item.media_type);
 
-  // For videos, use thumbnail_url if available, otherwise use the video URL
-  const thumbnailSrc = itemIsVideo && item.thumbnail_url
-    ? item.thumbnail_url
-    : getImageUrl(item.src, item.id, "medium");
+  // For images, use the optimized image URL
+  const imageSrc = getImageUrl(item.src, item.id, "medium");
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {
+        // Autoplay might be blocked, ignore error
+      });
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
 
   return (
     <div className="group">
-      <div className="image-card card-hover relative w-full">
-        {/* Clickable image area */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+      <div
+        className="image-card card-hover relative w-full"
+        onMouseEnter={itemIsVideo ? handleMouseEnter : undefined}
+        onMouseLeave={itemIsVideo ? handleMouseLeave : undefined}
+      >
+        {/* Clickable media area */}
         <button
           type="button"
           className={`${heightClass} bg-bg-base cursor-pointer w-full`}
           onClick={onExpand}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={thumbnailSrc}
-            alt={item.title || `Artwork ${item.id}`}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
-          {/* Video play icon overlay */}
-          {itemIsVideo && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-              </div>
-            </div>
+          {itemIsVideo ? (
+            <>
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video
+                ref={videoRef}
+                src={item.src}
+                className="w-full h-full object-cover"
+                muted
+                loop
+                playsInline
+                preload="metadata"
+              />
+              {/* Play icon overlay - hide when hovering/playing */}
+              {!isHovering && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                    <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={imageSrc}
+              alt={item.title || `Artwork ${item.id}`}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
           )}
         </button>
 

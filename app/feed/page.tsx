@@ -49,7 +49,7 @@ async function getPosts(categorySlug?: string): Promise<TimelineItem[]> {
           const postIds = postCategories.map((pc) => pc.post_id);
           const { data: posts } = await supabase
             .from("posts")
-            .select("id, image_url, likes_count, title, description, user_id, created_at, short_id")
+            .select("id, image_url, likes_count, title, description, user_id, created_at, short_id, media_type, thumbnail_url")
             .in("id", postIds)
             .order("created_at", { ascending: false });
 
@@ -63,6 +63,8 @@ async function getPosts(categorySlug?: string): Promise<TimelineItem[]> {
               user_id: post.user_id,
               short_id: post.short_id,
               created_at: post.created_at,
+              media_type: post.media_type,
+              thumbnail_url: post.thumbnail_url,
             }));
           }
         }
@@ -72,7 +74,7 @@ async function getPosts(categorySlug?: string): Promise<TimelineItem[]> {
 
     const { data: posts } = await supabase
       .from("posts")
-      .select("id, image_url, likes_count, title, description, user_id, created_at, short_id")
+      .select("id, image_url, likes_count, title, description, user_id, created_at, short_id, media_type, thumbnail_url")
       .order("created_at", { ascending: false });
 
     if (posts && posts.length > 0) {
@@ -85,6 +87,8 @@ async function getPosts(categorySlug?: string): Promise<TimelineItem[]> {
         user_id: post.user_id,
         short_id: post.short_id,
         created_at: post.created_at,
+        media_type: post.media_type,
+        thumbnail_url: post.thumbnail_url,
       }));
     }
   } catch {
