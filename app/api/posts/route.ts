@@ -1,9 +1,34 @@
 import { createClient } from "@/lib/supabase/server";
 import { uploadToCloudflare, deleteFromCloudflare, getCloudflareImageUrl } from "@/lib/cloudflare-images";
+import {
+  uploadToCloudflareStream,
+  deleteFromCloudflareStream,
+  getCloudflareStreamThumbnailUrl,
+  SUPPORTED_VIDEO_TYPES,
+  MAX_VIDEO_SIZE,
+} from "@/lib/cloudflare-stream";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 
-const MAX_IMAGES = 10;
+type MediaType = "image" | "video" | "gif";
+
+const MAX_MEDIA = 10;
+const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+
+function getMediaType(mimeType: string): MediaType {
+  if (mimeType === "image/gif") return "gif";
+  if (SUPPORTED_VIDEO_TYPES.includes(mimeType)) return "video";
+  return "image";
+}
+
+function isValidMediaType(mimeType: string): boolean {
+  return VALID_IMAGE_TYPES.includes(mimeType) || SUPPORTED_VIDEO_TYPES.includes(mimeType);
+}
+
+function getMaxFileSize(mimeType: string): number {
+  return SUPPORTED_VIDEO_TYPES.includes(mimeType) ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+}
 
 export async function GET() {
   const supabase = await createClient();
@@ -59,9 +84,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No files provided" }, { status: 400 });
   }
 
-  if (files.length > MAX_IMAGES) {
+  if (files.length > MAX_MEDIA) {
     return NextResponse.json(
-      { error: `Maximum ${MAX_IMAGES} images allowed per post` },
+      { error: `Maximum ${MAX_MEDIA} files allowed per post` },
       { status: 400 }
     );
   }
@@ -75,36 +100,63 @@ export async function POST(request: Request) {
   }
 
   // Validate all files
-  const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-  const maxSize = 10 * 1024 * 1024;
-
   for (const file of files) {
-    if (!validTypes.includes(file.type)) {
+    if (!isValidMediaType(file.type)) {
       return NextResponse.json(
-        { error: "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed." },
+        { error: "Invalid file type. Allowed: JPEG, PNG, GIF, WebP, MP4, WebM, MOV." },
         { status: 400 }
       );
     }
+    const maxSize = getMaxFileSize(file.type);
     if (file.size > maxSize) {
+      const maxMB = Math.round(maxSize / (1024 * 1024));
       return NextResponse.json(
-        { error: "File too large. Maximum size is 10MB." },
+        { error: `File too large. Maximum size is ${maxMB}MB.` },
         { status: 400 }
       );
     }
   }
 
-  // Upload all files to Cloudflare Images
-  const uploadedImages: { id: string; url: string }[] = [];
+  // Upload all files to Cloudflare (Images or Stream based on type)
+  const uploadedMedia: {
+    id: string;
+    url: string;
+    mediaType: MediaType;
+    thumbnailUrl?: string;
+  }[] = [];
+
   try {
     for (const file of files) {
-      const cloudflareResult = await uploadToCloudflare(file);
-      const imageUrl = getCloudflareImageUrl(cloudflareResult.id, "large");
-      uploadedImages.push({ id: cloudflareResult.id, url: imageUrl });
+      const mediaType = getMediaType(file.type);
+
+      if (mediaType === "video") {
+        // Upload to Cloudflare Stream
+        const streamResult = await uploadToCloudflareStream(file);
+        uploadedMedia.push({
+          id: streamResult.uid,
+          url: streamResult.playbackUrl,
+          mediaType: "video",
+          thumbnailUrl: getCloudflareStreamThumbnailUrl(streamResult.uid),
+        });
+      } else {
+        // Upload to Cloudflare Images (including GIFs)
+        const cloudflareResult = await uploadToCloudflare(file);
+        const imageUrl = getCloudflareImageUrl(cloudflareResult.id, "large");
+        uploadedMedia.push({
+          id: cloudflareResult.id,
+          url: imageUrl,
+          mediaType,
+        });
+      }
     }
   } catch (error) {
-    // Clean up any already uploaded images
-    for (const img of uploadedImages) {
-      await deleteFromCloudflare(img.id);
+    // Clean up any already uploaded media
+    for (const media of uploadedMedia) {
+      if (media.mediaType === "video") {
+        await deleteFromCloudflareStream(media.id);
+      } else {
+        await deleteFromCloudflare(media.id);
+      }
     }
     const message = error instanceof Error ? error.message : "Upload failed";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -113,8 +165,8 @@ export async function POST(request: Request) {
   // Generate short ID for user-friendly URLs (8 chars)
   const short_id = nanoid(8);
 
-  // Use first image as the cover/primary image
-  const coverImage = uploadedImages[0];
+  // Use first media item as the cover/primary
+  const coverMedia = uploadedMedia[0];
 
   // Create post record
   const { data: post, error: postError } = await supabase
@@ -123,26 +175,34 @@ export async function POST(request: Request) {
       user_id: user.id,
       title: title || null,
       description: description || null,
-      image_url: coverImage.url,
-      storage_path: coverImage.id,
+      image_url: coverMedia.url,
+      storage_path: coverMedia.id,
+      media_type: coverMedia.mediaType,
+      thumbnail_url: coverMedia.thumbnailUrl || null,
       short_id,
     })
     .select()
     .single();
 
   if (postError) {
-    // Clean up uploaded images if post creation fails
-    for (const img of uploadedImages) {
-      await deleteFromCloudflare(img.id);
+    // Clean up uploaded media if post creation fails
+    for (const media of uploadedMedia) {
+      if (media.mediaType === "video") {
+        await deleteFromCloudflareStream(media.id);
+      } else {
+        await deleteFromCloudflare(media.id);
+      }
     }
     return NextResponse.json({ error: postError.message }, { status: 500 });
   }
 
-  // Add all images to post_images table (including the cover for consistency)
-  const postImages = uploadedImages.map((img, index) => ({
+  // Add all media to post_images table (including the cover for consistency)
+  const postImages = uploadedMedia.map((media, index) => ({
     post_id: post.id,
-    image_url: img.url,
-    storage_path: img.id,
+    image_url: media.url,
+    storage_path: media.id,
+    media_type: media.mediaType,
+    thumbnail_url: media.thumbnailUrl || null,
     position: index,
   }));
 

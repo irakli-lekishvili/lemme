@@ -2,11 +2,15 @@
 
 import { createClient } from "@/lib/supabase/server";
 
+export type MediaType = "image" | "video" | "gif";
+
 export type PostImage = {
   id: string;
   image_url: string;
   storage_path: string;
   position: number;
+  media_type?: MediaType;
+  thumbnail_url?: string | null;
 };
 
 export type PostItem = {
@@ -18,6 +22,8 @@ export type PostItem = {
   short_id?: string | null;
   imageCount?: number;
   images?: PostImage[];
+  media_type?: MediaType;
+  thumbnail_url?: string | null;
 };
 
 const PAGE_SIZE = 8;
@@ -66,7 +72,7 @@ export async function getPaginatedPosts(
         const postIds = postCategories.map((pc) => pc.post_id);
         const { data: posts } = await supabase
           .from("posts")
-          .select("id, image_url, likes_count, title, user_id, short_id")
+          .select("id, image_url, likes_count, title, user_id, short_id, media_type, thumbnail_url")
           .in("id", postIds)
           .order("created_at", { ascending: false })
           .range(offset, offset + PAGE_SIZE - 1);
@@ -83,6 +89,8 @@ export async function getPaginatedPosts(
               user_id: post.user_id,
               short_id: post.short_id,
               imageCount: imageCounts.get(post.id) || 1,
+              media_type: post.media_type as MediaType,
+              thumbnail_url: post.thumbnail_url,
             })),
             hasMore: posts.length === PAGE_SIZE,
           };
@@ -95,7 +103,7 @@ export async function getPaginatedPosts(
 
   const { data: posts } = await supabase
     .from("posts")
-    .select("id, image_url, likes_count, title, user_id, short_id")
+    .select("id, image_url, likes_count, title, user_id, short_id, media_type, thumbnail_url")
     .order("created_at", { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
 
@@ -111,6 +119,8 @@ export async function getPaginatedPosts(
         user_id: post.user_id,
         short_id: post.short_id,
         imageCount: imageCounts.get(post.id) || 1,
+        media_type: post.media_type as MediaType,
+        thumbnail_url: post.thumbnail_url,
       })),
       hasMore: posts.length === PAGE_SIZE,
     };
@@ -124,9 +134,12 @@ export async function getPostImages(postId: string): Promise<PostImage[]> {
 
   const { data: images } = await supabase
     .from("post_images")
-    .select("id, image_url, storage_path, position")
+    .select("id, image_url, storage_path, position, media_type, thumbnail_url")
     .eq("post_id", postId)
     .order("position", { ascending: true });
 
-  return images || [];
+  return (images || []).map((img) => ({
+    ...img,
+    media_type: img.media_type as MediaType,
+  }));
 }

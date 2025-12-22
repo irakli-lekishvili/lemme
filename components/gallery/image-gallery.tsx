@@ -14,6 +14,7 @@ import {
   Heart,
   Loader2,
   MoreHorizontal,
+  Play,
   X,
 } from "lucide-react";
 import {
@@ -54,11 +55,15 @@ export type ImageCategory = {
   color: string | null;
 };
 
+export type MediaType = "image" | "video" | "gif";
+
 export type PostImage = {
   id: string;
   image_url: string;
   storage_path: string;
   position: number;
+  media_type?: MediaType;
+  thumbnail_url?: string | null;
 };
 
 export type ImageItem = {
@@ -72,7 +77,23 @@ export type ImageItem = {
   categories?: ImageCategory[];
   imageCount?: number;
   images?: PostImage[];
+  media_type?: MediaType;
+  thumbnail_url?: string | null;
 };
+
+// Check if media is a video
+function isVideo(mediaType?: MediaType): boolean {
+  return mediaType === "video";
+}
+
+// Get video playback URL from Cloudflare Stream
+function getVideoUrl(src: string): string {
+  // If it's already an HLS URL, return as-is
+  if (src.includes(".m3u8")) return src;
+  // If it's a cloudflarestream URL, return as-is
+  if (src.includes("cloudflarestream.com")) return src;
+  return src;
+}
 
 interface ImageGalleryProps {
   images: ImageItem[];
@@ -247,9 +268,12 @@ export function ImageGallery({
     if (e.key === "ArrowRight") goToNext();
   };
 
-  // Determine which image URL to show in modal
-  const getModalImageUrl = () => {
+  // Determine which media URL to show in modal
+  const getModalMediaUrl = () => {
     if (currentGroupImage) {
+      if (isVideo(currentGroupImage.media_type)) {
+        return getVideoUrl(currentGroupImage.image_url);
+      }
       return getImageUrl(
         currentGroupImage.image_url,
         currentGroupImage.id,
@@ -257,9 +281,23 @@ export function ImageGallery({
       );
     }
     if (selectedImage) {
+      if (isVideo(selectedImage.media_type)) {
+        return getVideoUrl(selectedImage.src);
+      }
       return getImageUrl(selectedImage.src, selectedImage.id, "xlarge");
     }
     return "";
+  };
+
+  // Check if current modal content is a video
+  const isCurrentMediaVideo = () => {
+    if (currentGroupImage) {
+      return isVideo(currentGroupImage.media_type);
+    }
+    if (selectedImage) {
+      return isVideo(selectedImage.media_type);
+    }
+    return false;
   };
 
   // Check if we can navigate previous (either in group or to previous post)
@@ -333,15 +371,29 @@ export function ImageGallery({
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
               </div>
             )}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={getModalImageUrl()}
-              alt={selectedImage.title || `Artwork ${selectedImage.id}`}
-              className={`max-w-full max-h-[75vh] object-contain rounded-xl ${
-                !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
-              }`}
-              onLoad={() => setIsModalImageLoaded(true)}
-            />
+            {isCurrentMediaVideo() ? (
+              /* eslint-disable-next-line jsx-a11y/media-has-caption */
+              <video
+                src={getModalMediaUrl()}
+                controls
+                autoPlay
+                playsInline
+                className={`max-w-full max-h-[75vh] object-contain rounded-xl ${
+                  !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
+                }`}
+                onLoadedData={() => setIsModalImageLoaded(true)}
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={getModalMediaUrl()}
+                alt={selectedImage.title || `Artwork ${selectedImage.id}`}
+                className={`max-w-full max-h-[75vh] object-contain rounded-xl ${
+                  !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
+                }`}
+                onLoad={() => setIsModalImageLoaded(true)}
+              />
+            )}
 
             {/* Image navigation arrows - Instagram style over the image */}
             {hasMultipleImages && isModalImageLoaded && !isLoadingGroup && (
@@ -639,6 +691,12 @@ function ImageCard({
     ? heightClasses[item.height]
     : "aspect-square";
   const imageCount = item.imageCount || 1;
+  const itemIsVideo = isVideo(item.media_type);
+
+  // For videos, use thumbnail_url if available, otherwise use the video URL
+  const thumbnailSrc = itemIsVideo && item.thumbnail_url
+    ? item.thumbnail_url
+    : getImageUrl(item.src, item.id, "medium");
 
   return (
     <div className="group">
@@ -651,11 +709,19 @@ function ImageCard({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={getImageUrl(item.src, item.id, "medium")}
+            src={thumbnailSrc}
             alt={item.title || `Artwork ${item.id}`}
             className="w-full h-full object-cover"
             loading="lazy"
           />
+          {/* Video play icon overlay */}
+          {itemIsVideo && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+              </div>
+            </div>
+          )}
         </button>
 
         {/* Carousel Dots - Always visible for multi-image posts */}
