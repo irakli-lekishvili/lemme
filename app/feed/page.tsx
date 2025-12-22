@@ -5,7 +5,6 @@ import {
 } from "@/components/gallery/timeline-gallery";
 import { Navbar } from "@/components/layout/navbar";
 import { createClient } from "@/lib/supabase/server";
-import Link from "next/link";
 
 type Category = {
   id: string;
@@ -128,31 +127,9 @@ export default async function FeedPage({
       {/* Footer */}
       <footer className="border-t border-border-subtle py-8">
         <div className="max-w-[470px] mx-auto px-4">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <p className="text-sm text-text-muted">
-              © {new Date().getFullYear()} Lemme.Love. All rights reserved.
-            </p>
-            <div className="flex items-center gap-6">
-              <Link
-                href="/terms"
-                className="text-sm text-text-muted hover:text-text-primary transition-colors"
-              >
-                Terms
-              </Link>
-              <Link
-                href="/privacy"
-                className="text-sm text-text-muted hover:text-text-primary transition-colors"
-              >
-                Privacy
-              </Link>
-              <Link
-                href="/support"
-                className="text-sm text-text-muted hover:text-text-primary transition-colors"
-              >
-                Support
-              </Link>
-            </div>
-          </div>
+          <p className="text-sm text-text-muted text-center">
+            © {new Date().getFullYear()} Lemme.Love. All rights reserved.
+          </p>
         </div>
       </footer>
     </div>
