@@ -22,7 +22,7 @@ type MediaFile = {
 const MAX_MEDIA = 10;
 const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const VALID_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50MB
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
 const ACCEPTED_TYPES = [...VALID_IMAGE_TYPES, ...VALID_VIDEO_TYPES].join(",");
 
@@ -273,7 +273,7 @@ export function UploadForm() {
               </p>
             </div>
             <p className="text-xs text-text-muted">
-              Images up to 10MB · Videos up to 100MB · Max {MAX_MEDIA} files
+              Images up to 50MB · Videos up to 100MB · Max {MAX_MEDIA} files
             </p>
           </div>
         </div>
