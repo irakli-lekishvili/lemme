@@ -248,13 +248,8 @@ export function UploadForm() {
     if (!hasError) {
       setError(null);
       setMedia((prev) => [...prev, ...newMedia]);
-
-      // Start uploading each file to Cloudflare immediately
-      for (const item of newMedia) {
-        uploadFileToCloudflare(item);
-      }
     }
-  }, [media.length, validateFile, getMediaType, uploadFileToCloudflare]);
+  }, [media.length, validateFile, getMediaType]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -312,54 +307,87 @@ export function UploadForm() {
     setDraggedIndex(null);
   };
 
-  const allUploadsComplete = media.length > 0 && media.every((m) => m.uploadStatus === "complete");
   const hasUploadErrors = media.some((m) => m.uploadStatus === "error");
-  const isAnyUploading = media.some((m) => m.uploadStatus === "uploading" || m.uploadStatus === "pending");
+  const isAnyUploading = media.some((m) => m.uploadStatus === "uploading");
+  const allUploadsComplete = media.length > 0 && media.every((m) => m.uploadStatus === "complete");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (media.length === 0 || !allUploadsComplete) return;
+    if (media.length === 0) return;
 
     setIsUploading(true);
     setError(null);
 
-    // Build media data with Cloudflare IDs
-    const mediaData = media
-      .filter((item) => item.cloudflareId)
-      .map((item) => ({
-        cloudflareId: item.cloudflareId as string,
-        type: item.type,
-      }));
-
     try {
-      const response = await fetch("/api/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          media: mediaData,
-          title,
-          description,
-          categories: selectedCategories,
-        }),
-      });
+      // Start all uploads and wait for them to complete
+      const uploadPromises = media.map((item) => uploadFileToCloudflare(item));
+      await Promise.all(uploadPromises);
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to create post");
-      }
-
-      // Clean up previews
-      media.forEach((item) => {
-        URL.revokeObjectURL(item.preview);
-      });
-
-      router.push("/");
+      // Check if any uploads failed (re-read state after uploads)
+      // We need to get the updated media with cloudflareIds
+      // Since state updates are async, we'll collect results differently
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
+      setError(err instanceof Error ? err.message : "Upload failed");
       setIsUploading(false);
+      return;
     }
   };
+
+  // Effect to create post after all uploads complete
+  useEffect(() => {
+    const createPost = async () => {
+      if (!isUploading || !allUploadsComplete) return;
+      if (hasUploadErrors) {
+        setError("Some files failed to upload. Please remove them and try again.");
+        setIsUploading(false);
+        return;
+      }
+
+      // Build media data with Cloudflare IDs
+      const mediaData = media
+        .filter((item) => item.cloudflareId)
+        .map((item) => ({
+          cloudflareId: item.cloudflareId as string,
+          type: item.type,
+        }));
+
+      if (mediaData.length === 0) {
+        setError("No files were uploaded successfully");
+        setIsUploading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            media: mediaData,
+            title,
+            description,
+            categories: selectedCategories,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to create post");
+        }
+
+        // Clean up previews
+        media.forEach((item) => {
+          URL.revokeObjectURL(item.preview);
+        });
+
+        router.push("/");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+        setIsUploading(false);
+      }
+    };
+
+    createPost();
+  }, [allUploadsComplete, hasUploadErrors, isUploading, media, title, description, selectedCategories, router]);
 
   const clearAllMedia = () => {
     media.forEach((item) => {
@@ -451,7 +479,7 @@ export function UploadForm() {
                 )}
 
                 {/* Upload progress overlay */}
-                {(item.uploadStatus === "pending" || item.uploadStatus === "uploading") && (
+                {item.uploadStatus === "uploading" && (
                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2">
                     <Loader2 className="w-6 h-6 animate-spin text-white" />
                     <span className="text-white text-sm font-medium">
@@ -484,7 +512,7 @@ export function UploadForm() {
                 )}
 
                 {/* Video indicator */}
-                {item.type === "video" && item.uploadStatus !== "uploading" && item.uploadStatus !== "pending" && (
+                {item.type === "video" && item.uploadStatus !== "uploading" && (
                   <div className="absolute bottom-2 right-2 p-1.5 bg-black/70 rounded-lg">
                     <Film className="w-4 h-4 text-white" />
                   </div>
@@ -652,23 +680,18 @@ export function UploadForm() {
       {/* Submit */}
       <button
         type="submit"
-        disabled={media.length === 0 || selectedCategories.length === 0 || isUploading || !allUploadsComplete || hasUploadErrors}
+        disabled={media.length === 0 || selectedCategories.length === 0 || isUploading}
         className="w-full btn btn-primary py-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
       >
-        {isUploading ? (
+        {isUploading && allUploadsComplete ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
             Creating post...
           </>
-        ) : isAnyUploading ? (
+        ) : isUploading || isAnyUploading ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
             Uploading files...
-          </>
-        ) : hasUploadErrors ? (
-          <>
-            <X className="w-5 h-5" />
-            Upload failed - remove failed files
           </>
         ) : (
           <>
