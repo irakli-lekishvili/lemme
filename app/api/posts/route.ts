@@ -1,34 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
-import { uploadToCloudflare, deleteFromCloudflare, getCloudflareImageUrl } from "@/lib/cloudflare-images";
-import {
-  uploadToCloudflareStream,
-  deleteFromCloudflareStream,
-  getCloudflareStreamThumbnailUrl,
-  SUPPORTED_VIDEO_TYPES,
-  MAX_VIDEO_SIZE,
-} from "@/lib/cloudflare-stream";
+import { getCloudflareImageUrl } from "@/lib/cloudflare-images";
+import { getCloudflareStreamThumbnailUrl } from "@/lib/cloudflare-stream";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 
 type MediaType = "image" | "video" | "gif";
 
+type MediaInput = {
+  cloudflareId: string;
+  type: MediaType;
+};
+
 const MAX_MEDIA = 10;
-const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
-
-function getMediaType(mimeType: string): MediaType {
-  if (mimeType === "image/gif") return "gif";
-  if (SUPPORTED_VIDEO_TYPES.includes(mimeType)) return "video";
-  return "image";
-}
-
-function isValidMediaType(mimeType: string): boolean {
-  return VALID_IMAGE_TYPES.includes(mimeType) || SUPPORTED_VIDEO_TYPES.includes(mimeType);
-}
-
-function getMaxFileSize(mimeType: string): number {
-  return SUPPORTED_VIDEO_TYPES.includes(mimeType) ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
-}
 
 export async function GET() {
   const supabase = await createClient();
@@ -56,35 +39,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const formData = await request.formData();
-  const fileCount = parseInt(formData.get("fileCount") as string, 10) || 0;
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const categoriesJson = formData.get("categories") as string;
-  const categoryIds: string[] = categoriesJson ? JSON.parse(categoriesJson) : [];
+  // Parse JSON body (files are already uploaded to Cloudflare)
+  const body = await request.json();
+  const { media, title, description, categories: categoryIds } = body as {
+    media: MediaInput[];
+    title?: string;
+    description?: string;
+    categories: string[];
+  };
 
-  // Collect all files
-  const files: File[] = [];
-  for (let i = 0; i < fileCount; i++) {
-    const file = formData.get(`file_${i}`) as File;
-    if (file) {
-      files.push(file);
-    }
+  if (!media || media.length === 0) {
+    return NextResponse.json({ error: "No media provided" }, { status: 400 });
   }
 
-  // Backward compatibility: also check for single "file" field
-  if (files.length === 0) {
-    const singleFile = formData.get("file") as File;
-    if (singleFile) {
-      files.push(singleFile);
-    }
-  }
-
-  if (files.length === 0) {
-    return NextResponse.json({ error: "No files provided" }, { status: 400 });
-  }
-
-  if (files.length > MAX_MEDIA) {
+  if (media.length > MAX_MEDIA) {
     return NextResponse.json(
       { error: `Maximum ${MAX_MEDIA} files allowed per post` },
       { status: 400 }
@@ -92,75 +60,35 @@ export async function POST(request: Request) {
   }
 
   // Validate categories (at least one required)
-  if (categoryIds.length === 0) {
+  if (!categoryIds || categoryIds.length === 0) {
     return NextResponse.json(
       { error: "At least one category is required" },
       { status: 400 }
     );
   }
 
-  // Validate all files
-  for (const file of files) {
-    if (!isValidMediaType(file.type)) {
-      return NextResponse.json(
-        { error: "Invalid file type. Allowed: JPEG, PNG, GIF, WebP, MP4, WebM, MOV." },
-        { status: 400 }
-      );
-    }
-    const maxSize = getMaxFileSize(file.type);
-    if (file.size > maxSize) {
-      const maxMB = Math.round(maxSize / (1024 * 1024));
-      return NextResponse.json(
-        { error: `File too large. Maximum size is ${maxMB}MB.` },
-        { status: 400 }
-      );
-    }
-  }
-
-  // Upload all files to Cloudflare (Images or Stream based on type)
+  // Build media data from Cloudflare IDs
   const uploadedMedia: {
     id: string;
     url: string;
     mediaType: MediaType;
     thumbnailUrl?: string;
-  }[] = [];
-
-  try {
-    for (const file of files) {
-      const mediaType = getMediaType(file.type);
-
-      if (mediaType === "video") {
-        // Upload to Cloudflare Stream
-        const streamResult = await uploadToCloudflareStream(file);
-        uploadedMedia.push({
-          id: streamResult.uid,
-          url: streamResult.playbackUrl,
-          mediaType: "video",
-          thumbnailUrl: getCloudflareStreamThumbnailUrl(streamResult.uid),
-        });
-      } else {
-        // Upload to Cloudflare Images (including GIFs)
-        const cloudflareResult = await uploadToCloudflare(file);
-        const imageUrl = getCloudflareImageUrl(cloudflareResult.id, "large");
-        uploadedMedia.push({
-          id: cloudflareResult.id,
-          url: imageUrl,
-          mediaType,
-        });
-      }
+  }[] = media.map((item) => {
+    if (item.type === "video") {
+      return {
+        id: item.cloudflareId,
+        url: `https://customer-${process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN}.cloudflarestream.com/${item.cloudflareId}/manifest/video.m3u8`,
+        mediaType: "video" as MediaType,
+        thumbnailUrl: getCloudflareStreamThumbnailUrl(item.cloudflareId),
+      };
+    } else {
+      return {
+        id: item.cloudflareId,
+        url: getCloudflareImageUrl(item.cloudflareId, "large"),
+        mediaType: item.type,
+      };
     }
-  } catch (error) {
-    // Clean up any already uploaded media
-    for (const media of uploadedMedia) {
-      if (media.mediaType === "video") {
-        await deleteFromCloudflareStream(media.id);
-      } else {
-        await deleteFromCloudflare(media.id);
-      }
-    }
-    const message = error instanceof Error ? error.message : "Upload failed";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  });
 
   // Generate short ID for user-friendly URLs (8 chars)
   const short_id = nanoid(8);
@@ -185,14 +113,9 @@ export async function POST(request: Request) {
     .single();
 
   if (postError) {
-    // Clean up uploaded media if post creation fails
-    for (const media of uploadedMedia) {
-      if (media.mediaType === "video") {
-        await deleteFromCloudflareStream(media.id);
-      } else {
-        await deleteFromCloudflare(media.id);
-      }
-    }
+    // Note: Media already uploaded to Cloudflare will remain (orphaned)
+    // Could implement cleanup via a background job if needed
+    console.error("Failed to create post:", postError);
     return NextResponse.json({ error: postError.message }, { status: 500 });
   }
 
