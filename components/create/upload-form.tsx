@@ -71,47 +71,82 @@ async function uploadImageToCloudflare(
   });
 }
 
-async function uploadVideoToCloudflare(
+async function uploadVideoToMux(
   file: File,
   onProgress: (progress: number) => void
 ): Promise<string> {
-  // Get direct upload URL from our API (must include file size for TUS protocol)
+  // Get direct upload URL from our API
   const urlResponse = await fetch("/api/upload/video", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ maxDurationSeconds: 1800, fileSize: file.size }),
   });
   if (!urlResponse.ok) {
     const error = await urlResponse.json();
     throw new Error(error.error || "Failed to get upload URL");
   }
-  const { uid, uploadURL } = await urlResponse.json();
+  const { uploadId, uploadUrl } = await urlResponse.json();
 
-  // Upload directly to Cloudflare using TUS protocol
-  const xhr = new XMLHttpRequest();
+  // Upload directly to Mux using PUT
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
 
-  return new Promise((resolve, reject) => {
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable) {
-        onProgress(Math.round((e.loaded / e.total) * 100));
+        // Upload is 0-80%, processing is 80-100%
+        onProgress(Math.round((e.loaded / e.total) * 80));
       }
     });
 
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(uid);
+        resolve();
       } else {
-        reject(new Error("Video upload failed"));
+        reject(new Error(`Video upload failed (${xhr.status})`));
       }
     });
 
     xhr.addEventListener("error", () => reject(new Error("Video upload failed")));
-    xhr.open("PATCH", uploadURL);
-    xhr.setRequestHeader("Content-Type", "application/offset+octet-stream");
-    xhr.setRequestHeader("Upload-Offset", "0");
-    xhr.setRequestHeader("Tus-Resumable", "1.0.0");
+
+    xhr.open("PUT", uploadUrl);
     xhr.send(file);
   });
+
+  // Wait for video to be ready (Mux needs to process it)
+  onProgress(85);
+  const maxWaitTime = 300000; // 5 minutes max (Mux is usually fast)
+  const pollInterval = 2000; // Check every 2 seconds
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxWaitTime) {
+    try {
+      const statusResponse = await fetch(`/api/upload/video/status?uploadId=${uploadId}`);
+      if (statusResponse.ok) {
+        const status = await statusResponse.json();
+        if (status.state === "ready" && status.playbackId) {
+          onProgress(100);
+          // Return playbackId as the video identifier
+          return status.playbackId;
+        }
+        if (status.state === "error") {
+          throw new Error(status.errorReasonText || "Video processing failed");
+        }
+      }
+    } catch (err) {
+      // Re-throw video processing errors (not network errors)
+      if (err instanceof Error && err.message.includes("failed")) {
+        throw err;
+      }
+      // Network errors - continue polling
+      console.warn("Status check failed, retrying...", err);
+    }
+    // Update progress while waiting
+    const elapsed = Date.now() - startTime;
+    const processingProgress = Math.min(99, 85 + (elapsed / maxWaitTime) * 14);
+    onProgress(Math.round(processingProgress));
+    await new Promise((r) => setTimeout(r, pollInterval));
+  }
+
+  // Timeout - throw error
+  throw new Error("Video processing timed out. Please try again.");
 }
 
 export function UploadForm() {
@@ -201,7 +236,7 @@ export function UploadForm() {
     try {
       let cloudflareId: string;
       if (mediaItem.type === "video") {
-        cloudflareId = await uploadVideoToCloudflare(mediaItem.file, updateProgress);
+        cloudflareId = await uploadVideoToMux(mediaItem.file, updateProgress);
       } else {
         cloudflareId = await uploadImageToCloudflare(mediaItem.file, updateProgress);
       }
@@ -483,7 +518,9 @@ export function UploadForm() {
                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2">
                     <Loader2 className="w-6 h-6 animate-spin text-white" />
                     <span className="text-white text-sm font-medium">
-                      {item.uploadProgress}%
+                      {item.type === "video" && item.uploadProgress >= 80
+                        ? "Processing..."
+                        : `${item.uploadProgress}%`}
                     </span>
                     <div className="w-3/4 h-1.5 bg-white/30 rounded-full overflow-hidden">
                       <div

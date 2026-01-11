@@ -86,12 +86,12 @@ function isVideo(mediaType?: MediaType): boolean {
   return mediaType === "video";
 }
 
-// Get video playback URL from Cloudflare Stream
+// Get video playback URL (supports Mux and Cloudflare Stream)
 function getVideoUrl(src: string): string {
-  // If it's already an HLS URL, return as-is
+  // If it's already an HLS URL (Mux or Cloudflare), return as-is
   if (src.includes(".m3u8")) return src;
-  // If it's a cloudflarestream URL, return as-is
-  if (src.includes("cloudflarestream.com")) return src;
+  // If it's a Mux or Cloudflare stream URL, return as-is
+  if (src.includes("stream.mux.com") || src.includes("cloudflarestream.com")) return src;
   return src;
 }
 

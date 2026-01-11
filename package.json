@@ -19,6 +19,8 @@
     "email:export": "npx tsx emails/export.ts"
   },
   "dependencies": {
+    "@mux/mux-node": "^12.8.1",
+    "@mux/mux-uploader-react": "^1.4.1",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-email/components": "^1.0.2",
@@ -41,6 +43,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.0",
     "tailwindcss": "^4",

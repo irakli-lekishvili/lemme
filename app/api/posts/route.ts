@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCloudflareImageUrl } from "@/lib/cloudflare-images";
-import { getCloudflareStreamThumbnailUrl } from "@/lib/cloudflare-stream";
+import { getMuxPlaybackUrl, getMuxThumbnailUrl } from "@/lib/mux";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // Build media data from Cloudflare IDs
+  // Build media data from uploaded IDs (Mux playbackId for videos, Cloudflare ID for images)
   const uploadedMedia: {
     id: string;
     url: string;
@@ -75,11 +75,13 @@ export async function POST(request: Request) {
     thumbnailUrl?: string;
   }[] = media.map((item) => {
     if (item.type === "video") {
+      // For videos, cloudflareId is actually the Mux playbackId
+      const playbackId = item.cloudflareId;
       return {
-        id: item.cloudflareId,
-        url: `https://customer-${process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN}.cloudflarestream.com/${item.cloudflareId}/manifest/video.m3u8`,
+        id: playbackId,
+        url: getMuxPlaybackUrl(playbackId),
         mediaType: "video" as MediaType,
-        thumbnailUrl: getCloudflareStreamThumbnailUrl(item.cloudflareId),
+        thumbnailUrl: getMuxThumbnailUrl(playbackId),
       };
     } else {
       return {

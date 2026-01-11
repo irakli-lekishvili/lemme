@@ -68,15 +68,19 @@ interface PostDetailProps {
 export function PostDetail({ post }: PostDetailProps) {
   const isVideo = post.media_type === "video";
 
-  // Get the video URL for playback
+  // Get the video URL for playback (supports Mux and Cloudflare Stream)
   const getVideoUrl = () => {
-    const streamSubdomain = process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN;
-    if (!streamSubdomain) return post.image_url;
+    // If it's already an HLS URL (Mux or Cloudflare), return as-is
+    if (post.image_url.includes(".m3u8")) return post.image_url;
+    if (post.image_url.includes("stream.mux.com")) return post.image_url;
 
-    // Extract video ID from the URL if it's a Cloudflare Stream URL
-    const match = post.image_url.match(/cloudflarestream\.com\/([^/]+)/);
-    if (match) {
-      return `https://customer-${streamSubdomain}.cloudflarestream.com/${match[1]}/manifest/video.m3u8`;
+    // Legacy: Extract video ID from Cloudflare Stream URL
+    const streamSubdomain = process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN;
+    if (streamSubdomain) {
+      const match = post.image_url.match(/cloudflarestream\.com\/([^/]+)/);
+      if (match) {
+        return `https://customer-${streamSubdomain}.cloudflarestream.com/${match[1]}/manifest/video.m3u8`;
+      }
     }
     return post.image_url;
   };
