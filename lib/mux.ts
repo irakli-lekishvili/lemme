@@ -147,7 +147,7 @@ export async function importVideoFromUrl(url: string): Promise<{
   const mux = getMuxClient();
 
   const asset = await mux.video.assets.create({
-    input: [{ url }],
+    inputs: [{ url }],
     playback_policy: ["public"],
     encoding_tier: "baseline",
   });

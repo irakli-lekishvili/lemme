@@ -185,7 +185,7 @@ async function downloadFromCloudflare(videoId: string): Promise<string | null> {
 /**
  * Upload video to Mux using direct upload
  */
-async function uploadToMux(localFilePath: string): Promise<{ playbackId: string; assetId: string } | null> {
+async function uploadToMux(localFilePath: string): Promise<{ playbackId: string; assetId: string } | undefined> {
   try {
     // Step 1: Create direct upload URL
     console.log(`  Creating Mux upload URL...`);
@@ -214,7 +214,7 @@ async function uploadToMux(localFilePath: string): Promise<{ playbackId: string;
 
     if (!uploadResponse.ok) {
       console.error(`  Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
-      return null;
+      return undefined;
     }
 
     console.log(`  Upload complete. Waiting for processing...`);
@@ -240,7 +240,7 @@ async function uploadToMux(localFilePath: string): Promise<{ playbackId: string;
 
         if (asset.status === "errored") {
           console.error(`  Mux asset errored: ${JSON.stringify(asset.errors)}`);
-          return null;
+          return undefined;
         }
 
         console.log(`  Processing... (status: ${asset.status})`);
@@ -252,10 +252,10 @@ async function uploadToMux(localFilePath: string): Promise<{ playbackId: string;
     }
 
     console.error(`  Mux processing timed out`);
-    return null;
+    return undefined;
   } catch (error) {
     console.error(`  Failed to upload to Mux:`, error);
-    return null;
+    return undefined;
   }
 }
 
