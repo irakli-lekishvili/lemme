@@ -37,20 +37,19 @@ export async function POST() {
 
   try {
     // Request a direct upload URL from Cloudflare
+    // v2 API requires multipart/form-data format
+    const formData = new FormData();
+    formData.append("requireSignedURLs", "false");
+    formData.append("metadata", JSON.stringify({ userId: user.id }));
+
     const response = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${accountId}/images/v2/direct_upload`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          requireSignedURLs: false,
-          metadata: {
-            userId: user.id,
-          },
-        }),
+        body: formData,
       }
     );
 
