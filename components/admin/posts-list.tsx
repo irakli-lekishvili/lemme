@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import MuxPlayer from "@mux/mux-player-react";
 import { extractMuxPlaybackId } from "@/lib/mux-client";
 import {
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
+  Eye,
+  EyeOff,
   Heart,
   Calendar,
   Film,
@@ -49,13 +53,14 @@ export function PostsList({ items, view }: PostsListProps) {
   // Selection tracks post IDs (deleting a post deletes all its images)
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
-  const [enlargedImage, setEnlargedImage] = useState<{
-    url: string;
-    isVideo: boolean;
-  } | null>(null);
+  const [enlargedIndex, setEnlargedIndex] = useState<number | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+
+  const deletedCount = items.filter((i) => i.deleted_at).length;
+  const visibleItems = showDeleted ? items : items.filter((i) => !i.deleted_at);
 
   const deletablePostIds = [
-    ...new Set(items.filter((i) => !i.deleted_at).map((i) => i.postId)),
+    ...new Set(visibleItems.filter((i) => !i.deleted_at).map((i) => i.postId)),
   ];
   const allDeletableSelected =
     deletablePostIds.length > 0 &&
@@ -91,6 +96,23 @@ export function PostsList({ items, view }: PostsListProps) {
 
   return (
     <div>
+      {/* Show deleted toggle */}
+      {deletedCount > 0 && (
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => setShowDeleted(!showDeleted)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-bg-elevated border border-border-subtle hover:border-border-strong text-text-secondary hover:text-text-primary"
+          >
+            {showDeleted ? (
+              <EyeOff className="w-3.5 h-3.5" />
+            ) : (
+              <Eye className="w-3.5 h-3.5" />
+            )}
+            {showDeleted ? "Hide deleted" : `Show deleted (${deletedCount})`}
+          </button>
+        </div>
+      )}
+
       {/* Selection bar */}
       {selectedPosts.size > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-bg-elevated border border-border-subtle rounded-xl">
@@ -125,7 +147,7 @@ export function PostsList({ items, view }: PostsListProps) {
 
       {view === "grid" ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const isSelected = selectedPosts.has(item.postId);
             return (
               <div
@@ -203,10 +225,8 @@ export function PostsList({ items, view }: PostsListProps) {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setEnlargedImage({
-                          url: item.image_url,
-                          isVideo: item.media_type === "video",
-                        });
+                        const idx = visibleItems.findIndex((v) => v.id === item.id);
+                        if (idx !== -1) setEnlargedIndex(idx);
                       }}
                       className="absolute top-2 right-2 w-7 h-7 rounded-md bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 text-white"
                     >
@@ -275,7 +295,7 @@ export function PostsList({ items, view }: PostsListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const isSelected = selectedPosts.has(item.postId);
                 return (
                   <TableRow
@@ -358,71 +378,174 @@ export function PostsList({ items, view }: PostsListProps) {
       )}
 
       {/* Lightbox */}
-      {enlargedImage && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setEnlargedImage(null)}
-        >
-          <button
-            onClick={() => setEnlargedImage(null)}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <div
-            className="relative max-w-[90vw] max-h-[90vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {enlargedImage.isVideo ? (
-              (() => {
-                const playbackId = extractMuxPlaybackId(enlargedImage.url);
-                return playbackId ? (
-                  <div
-                    style={{
-                      maxWidth: "80vw",
-                      height: "80vh",
-                      overflow: "hidden",
-                      borderRadius: "0.5rem",
-                    }}
-                  >
-                    <MuxPlayer
-                      playbackId={playbackId}
-                      streamType="on-demand"
-                      autoPlay
-                      loop
-                      muted
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        "--media-object-fit": "contain",
-                      } as React.CSSProperties & Record<`--${string}`, string>}
-                    />
-                  </div>
-                ) : (
-                  /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                  <video
-                    src={enlargedImage.url}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    controls
-                    className="max-w-full max-h-[90vh] rounded-lg"
-                  />
-                );
-              })()
-            ) : (
-              <Image
-                src={enlargedImage.url}
-                alt="Enlarged view"
-                width={1200}
-                height={1200}
-                className="max-w-full max-h-[90vh] object-contain rounded-lg"
-              />
-            )}
-          </div>
-        </div>
+      {enlargedIndex !== null && visibleItems[enlargedIndex] && (
+        <AdminLightbox
+          item={visibleItems[enlargedIndex]}
+          isSelected={selectedPosts.has(visibleItems[enlargedIndex].postId)}
+          onToggleSelect={() => {
+            const item = visibleItems[enlargedIndex];
+            if (!item.deleted_at) togglePost(item.postId);
+          }}
+          onClose={() => setEnlargedIndex(null)}
+          onPrev={enlargedIndex > 0 ? () => setEnlargedIndex(enlargedIndex - 1) : undefined}
+          onNext={enlargedIndex < visibleItems.length - 1 ? () => setEnlargedIndex(enlargedIndex + 1) : undefined}
+        />
       )}
+    </div>
+  );
+}
+
+function AdminLightbox({
+  item,
+  isSelected,
+  onToggleSelect,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  item: PostItem;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onClose: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isVideo = item.media_type === "video";
+
+  useEffect(() => {
+    containerRef.current?.focus();
+  }, [item.id]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") onClose();
+    if (e.key === "ArrowLeft" && onPrev) onPrev();
+    if (e.key === "ArrowRight" && onNext) onNext();
+    if (e.key === " " && !item.deleted_at) {
+      e.preventDefault();
+      onToggleSelect();
+    }
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 outline-none"
+      onClick={onClose}
+      onKeyDown={handleKeyDown}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white z-10"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
+      {/* Select button */}
+      {!item.deleted_at && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect();
+          }}
+          className="absolute top-4 left-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white text-sm font-medium z-10"
+        >
+          <div
+            className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+              isSelected
+                ? "bg-primary-500 border-primary-500"
+                : "border-white/60"
+            }`}
+          >
+            {isSelected && <Check className="w-3 h-3 text-white" />}
+          </div>
+          {isSelected ? "Selected" : "Select"}
+        </button>
+      )}
+
+      {/* Previous button */}
+      {onPrev && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPrev();
+          }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white z-10"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Next button */}
+      {onNext && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onNext();
+          }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white z-10"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Media content */}
+      <div
+        className="relative max-w-[80vw] max-h-[80vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {isVideo ? (
+          (() => {
+            const playbackId = extractMuxPlaybackId(item.image_url);
+            return playbackId ? (
+              <div
+                style={{
+                  maxWidth: "80vw",
+                  height: "80vh",
+                  overflow: "hidden",
+                  borderRadius: "0.5rem",
+                }}
+              >
+                <MuxPlayer
+                  playbackId={playbackId}
+                  streamType="on-demand"
+                  autoPlay
+                  loop
+                  muted
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    "--media-object-fit": "contain",
+                  } as React.CSSProperties & Record<`--${string}`, string>}
+                />
+              </div>
+            ) : (
+              /* eslint-disable-next-line jsx-a11y/media-has-caption */
+              <video
+                src={item.image_url}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                className="max-w-full max-h-[80vh] rounded-lg"
+              />
+            );
+          })()
+        ) : (
+          <Image
+            src={item.image_url}
+            alt={item.title || "Enlarged view"}
+            width={1200}
+            height={1200}
+            className="max-w-full max-h-[80vh] object-contain rounded-lg"
+          />
+        )}
+      </div>
     </div>
   );
 }
