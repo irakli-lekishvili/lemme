@@ -381,6 +381,8 @@ export function PostsList({ items, view }: PostsListProps) {
       {enlargedIndex !== null && visibleItems[enlargedIndex] && (
         <AdminLightbox
           item={visibleItems[enlargedIndex]}
+          currentIndex={enlargedIndex}
+          totalCount={visibleItems.length}
           isSelected={selectedPosts.has(visibleItems[enlargedIndex].postId)}
           onToggleSelect={() => {
             const item = visibleItems[enlargedIndex];
@@ -397,6 +399,8 @@ export function PostsList({ items, view }: PostsListProps) {
 
 function AdminLightbox({
   item,
+  currentIndex,
+  totalCount,
   isSelected,
   onToggleSelect,
   onClose,
@@ -404,6 +408,8 @@ function AdminLightbox({
   onNext,
 }: {
   item: PostItem;
+  currentIndex: number;
+  totalCount: number;
   isSelected: boolean;
   onToggleSelect: () => void;
   onClose: () => void;
@@ -437,13 +443,18 @@ function AdminLightbox({
       onClick={onClose}
       onKeyDown={handleKeyDown}
     >
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white z-10"
-      >
-        <X className="w-5 h-5" />
-      </button>
+      {/* Top right: counter + close */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+        <span className="px-3 py-2 rounded-lg bg-white/10 text-white text-sm font-medium">
+          {currentIndex + 1} / {totalCount}
+        </span>
+        <button
+          onClick={onClose}
+          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
       {/* Select button */}
       {!item.deleted_at && (
