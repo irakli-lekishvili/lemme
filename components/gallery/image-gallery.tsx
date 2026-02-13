@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import MuxPlayer from "@mux/mux-player-react";
+import { extractMuxPlaybackId } from "@/lib/mux-client";
 
 type ImageVariant = "thumbnail" | "medium" | "large" | "xlarge";
 
@@ -362,7 +364,7 @@ export function ImageGallery({
           {/* Main content area */}
           <div
             role="presentation"
-            className="relative max-w-[90vw] max-h-[75vh] animate-in zoom-in-95 duration-200"
+            className="relative max-w-[70vw] max-h-[80vh] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Skeleton loader */}
@@ -372,18 +374,42 @@ export function ImageGallery({
               </div>
             )}
             {isCurrentMediaVideo() ? (
-              /* eslint-disable-next-line jsx-a11y/media-has-caption */
-              <video
-                src={getModalMediaUrl()}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className={`max-w-full max-h-[75vh] object-contain rounded-xl ${
-                  !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
-                }`}
-                onLoadedData={() => setIsModalImageLoaded(true)}
-              />
+              (() => {
+                const mediaUrl = getModalMediaUrl();
+                const playbackId = extractMuxPlaybackId(mediaUrl);
+                return playbackId ? (
+                  <MuxPlayer
+                    playbackId={playbackId}
+                    streamType="on-demand"
+                    autoPlay
+                    loop
+                    muted
+                    className={
+                      !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
+                    }
+                    onLoadedData={() => setIsModalImageLoaded(true)}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "75vh",
+                      borderRadius: "0.75rem",
+                      "--media-object-fit": "contain",
+                    } as React.CSSProperties}
+                  />
+                ) : (
+                  /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                  <video
+                    src={mediaUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className={`max-w-full max-h-[75vh] object-contain rounded-xl ${
+                      !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
+                    }`}
+                    onLoadedData={() => setIsModalImageLoaded(true)}
+                  />
+                );
+              })()
             ) : (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
@@ -683,7 +709,8 @@ function ImageCard({
   item: ImageItem;
   onExpand: () => void;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const videoRef = useRef<any>(null);
   const [isHovering, setIsHovering] = useState(false);
   const heightClasses: Record<string, string> = {
     short: "aspect-[4/3]",
@@ -731,26 +758,49 @@ function ImageCard({
           onClick={onExpand}
         >
           {itemIsVideo ? (
-            <>
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <video
-                ref={videoRef}
-                src={item.src}
-                className="w-full h-full object-cover"
-                muted
-                loop
-                playsInline
-                preload="metadata"
-              />
-              {/* Play icon overlay - hide when hovering/playing */}
-              {!isHovering && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                    <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-                  </div>
-                </div>
-              )}
-            </>
+            (() => {
+              const playbackId = extractMuxPlaybackId(item.src);
+              return (
+                <>
+                  {playbackId ? (
+                    <MuxPlayer
+                      ref={videoRef}
+                      playbackId={playbackId}
+                      streamType="on-demand"
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        "--media-object-fit": "cover",
+                        "--controls": "none",
+                      } as React.CSSProperties}
+                    />
+                  ) : (
+                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                    <video
+                      ref={videoRef}
+                      src={item.src}
+                      className="w-full h-full object-cover"
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                  )}
+                  {/* Play icon overlay - hide when hovering/playing */}
+                  {!isHovering && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                        <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img

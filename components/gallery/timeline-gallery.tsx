@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import MuxPlayer from "@mux/mux-player-react";
+import { extractMuxPlaybackId } from "@/lib/mux-client";
 import {
   Tooltip,
   TooltipContent,
@@ -86,7 +88,8 @@ export function TimelineGallery({ posts }: TimelineGalleryProps) {
 }
 
 function TimelinePost({ post }: { post: TimelineItem }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const videoRef = useRef<any>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const isVideo = post.media_type === "video";
@@ -144,29 +147,56 @@ function TimelinePost({ post }: { post: TimelineItem }) {
           <div className="absolute inset-0 animate-pulse bg-bg-hover" />
         )}
         {isVideo ? (
-          <>
-            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <video
-              ref={videoRef}
-              src={post.src}
-              className={`w-full h-full object-cover transition-opacity duration-300 ${
-                mediaLoaded ? "opacity-100" : "opacity-0"
-              }`}
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              onLoadedData={() => setMediaLoaded(true)}
-            />
-            {/* Play icon overlay - hide when hovering/playing */}
-            {!isHovering && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center">
-                  <Play className="w-8 h-8 text-white fill-white ml-1" />
-                </div>
-              </div>
-            )}
-          </>
+          (() => {
+            const playbackId = extractMuxPlaybackId(post.src);
+            return (
+              <>
+                {playbackId ? (
+                  <MuxPlayer
+                    ref={videoRef}
+                    playbackId={playbackId}
+                    streamType="on-demand"
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    onLoadedData={() => setMediaLoaded(true)}
+                    className={`transition-opacity duration-300 ${
+                      mediaLoaded ? "opacity-100" : "opacity-0"
+                    }`}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      "--media-object-fit": "cover",
+                      "--controls": "none",
+                    } as React.CSSProperties}
+                  />
+                ) : (
+                  /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                  <video
+                    ref={videoRef}
+                    src={post.src}
+                    className={`w-full h-full object-cover transition-opacity duration-300 ${
+                      mediaLoaded ? "opacity-100" : "opacity-0"
+                    }`}
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    onLoadedData={() => setMediaLoaded(true)}
+                  />
+                )}
+                {/* Play icon overlay - hide when hovering/playing */}
+                {!isHovering && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center">
+                      <Play className="w-8 h-8 text-white fill-white ml-1" />
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img

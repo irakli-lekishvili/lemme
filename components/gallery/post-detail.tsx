@@ -4,6 +4,8 @@ import { useBookmarks } from "@/components/providers/bookmarks-provider";
 import { useLikes } from "@/components/providers/likes-provider";
 import { useReports } from "@/components/providers/reports-provider";
 import { ReportModal } from "./report-modal";
+import MuxPlayer from "@mux/mux-player-react";
+import { extractMuxPlaybackId } from "@/lib/mux-client";
 import {
   Tooltip,
   TooltipContent,
@@ -92,14 +94,33 @@ export function PostDetail({ post }: PostDetailProps) {
         {/* Media */}
         <div className="bg-bg-base md:flex-1 md:max-w-[600px]">
           {isVideo ? (
-            <video
-              src={getVideoUrl()}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full h-auto object-contain"
-            />
+            (() => {
+              const videoUrl = getVideoUrl();
+              const playbackId = extractMuxPlaybackId(videoUrl);
+              return playbackId ? (
+                <MuxPlayer
+                  playbackId={playbackId}
+                  streamType="on-demand"
+                  autoPlay
+                  loop
+                  muted
+                  style={{
+                    width: "100%",
+                    "--media-object-fit": "contain",
+                  } as React.CSSProperties}
+                />
+              ) : (
+                /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                <video
+                  src={videoUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-auto object-contain"
+                />
+              );
+            })()
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img

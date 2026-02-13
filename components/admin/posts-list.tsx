@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import MuxPlayer from "@mux/mux-player-react";
+import { extractMuxPlaybackId } from "@/lib/mux-client";
 import {
   ExternalLink,
   Heart,
@@ -372,16 +374,34 @@ export function PostsList({ items, view }: PostsListProps) {
             onClick={(e) => e.stopPropagation()}
           >
             {enlargedImage.isVideo ? (
-              /* eslint-disable-next-line jsx-a11y/media-has-caption */
-              <video
-                src={enlargedImage.url}
-                autoPlay
-                loop
-                muted
-                playsInline
-                controls
-                className="max-w-full max-h-[90vh] rounded-lg"
-              />
+              (() => {
+                const playbackId = extractMuxPlaybackId(enlargedImage.url);
+                return playbackId ? (
+                  <MuxPlayer
+                    playbackId={playbackId}
+                    streamType="on-demand"
+                    autoPlay
+                    loop
+                    muted
+                    style={{
+                      maxWidth: "90vw",
+                      maxHeight: "90vh",
+                      borderRadius: "0.5rem",
+                    }}
+                  />
+                ) : (
+                  /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                  <video
+                    src={enlargedImage.url}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    controls
+                    className="max-w-full max-h-[90vh] rounded-lg"
+                  />
+                );
+              })()
             ) : (
               <Image
                 src={enlargedImage.url}
