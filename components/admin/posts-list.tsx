@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
   Check,
+  Maximize2,
 } from "lucide-react";
 import {
   Table,
@@ -46,6 +47,10 @@ export function PostsList({ items, view }: PostsListProps) {
   // Selection tracks post IDs (deleting a post deletes all its images)
   const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const [enlargedImage, setEnlargedImage] = useState<{
+    url: string;
+    isVideo: boolean;
+  } | null>(null);
 
   const deletablePostIds = [
     ...new Set(items.filter((i) => !i.deleted_at).map((i) => i.postId)),
@@ -117,7 +122,7 @@ export function PostsList({ items, view }: PostsListProps) {
       )}
 
       {view === "grid" ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {items.map((item) => {
             const isSelected = selectedPosts.has(item.postId);
             return (
@@ -166,20 +171,45 @@ export function PostsList({ items, view }: PostsListProps) {
                   )}
 
                   {/* Media type badge */}
-                  {item.media_type === "video" && (
-                    <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm rounded-md px-2 py-0.5 flex items-center gap-1">
-                      <Film className="w-3 h-3 text-white" />
-                      <span className="text-xs text-white font-medium">
-                        Video
-                      </span>
-                    </div>
-                  )}
+                  <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm rounded-md px-2 py-0.5 flex items-center gap-1">
+                    {item.media_type === "video" ? (
+                      <>
+                        <Film className="w-3 h-3 text-white" />
+                        <span className="text-xs text-white font-medium">
+                          Video
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="w-3 h-3 text-white" />
+                        <span className="text-xs text-white font-medium">
+                          Image
+                        </span>
+                      </>
+                    )}
+                  </div>
                   {item.deleted_at && (
                     <div className="absolute top-2 right-2 bg-error-500/80 backdrop-blur-sm rounded-md px-2 py-0.5">
                       <span className="text-xs text-white font-medium">
                         Deleted
                       </span>
                     </div>
+                  )}
+
+                  {/* Enlarge button */}
+                  {!item.deleted_at && (item.thumbnail_url || item.image_url) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEnlargedImage({
+                          url: item.image_url,
+                          isVideo: item.media_type === "video",
+                        });
+                      }}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-md bg-black/50 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 text-white"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </div>
 
@@ -322,6 +352,46 @@ export function PostsList({ items, view }: PostsListProps) {
               })}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {enlargedImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setEnlargedImage(null)}
+        >
+          <button
+            onClick={() => setEnlargedImage(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <div
+            className="relative max-w-[90vw] max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {enlargedImage.isVideo ? (
+              /* eslint-disable-next-line jsx-a11y/media-has-caption */
+              <video
+                src={enlargedImage.url}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls
+                className="max-w-full max-h-[90vh] rounded-lg"
+              />
+            ) : (
+              <Image
+                src={enlargedImage.url}
+                alt="Enlarged view"
+                width={1200}
+                height={1200}
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              />
+            )}
+          </div>
         </div>
       )}
     </div>
