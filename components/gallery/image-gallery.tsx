@@ -364,7 +364,7 @@ export function ImageGallery({
           {/* Main content area */}
           <div
             role="presentation"
-            className="relative max-w-4xl max-h-[80vh] animate-in zoom-in-95 duration-200"
+            className="relative max-w-[80vw] max-h-[80vh] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Skeleton loader */}
@@ -378,23 +378,31 @@ export function ImageGallery({
                 const mediaUrl = getModalMediaUrl();
                 const playbackId = extractMuxPlaybackId(mediaUrl);
                 return playbackId ? (
-                  <MuxPlayer
-                    playbackId={playbackId}
-                    streamType="on-demand"
-                    autoPlay
-                    loop
-                    muted
+                  <div
                     className={
                       !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
                     }
-                    onLoadedData={() => setIsModalImageLoaded(true)}
                     style={{
-                      maxWidth: "100%",
-                      maxHeight: "70vh",
+                      maxWidth: "80vw",
+                      height: "80vh",
+                      overflow: "hidden",
                       borderRadius: "0.75rem",
-                      "--media-object-fit": "contain",
-                    } as React.CSSProperties & Record<`--${string}`, string>}
-                  />
+                    }}
+                  >
+                    <MuxPlayer
+                      playbackId={playbackId}
+                      streamType="on-demand"
+                      autoPlay
+                      loop
+                      muted
+                      onLoadedData={() => setIsModalImageLoaded(true)}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        "--media-object-fit": "contain",
+                      } as React.CSSProperties & Record<`--${string}`, string>}
+                    />
+                  </div>
                 ) : (
                   /* eslint-disable-next-line jsx-a11y/media-has-caption */
                   <video
@@ -403,7 +411,7 @@ export function ImageGallery({
                     loop
                     muted
                     playsInline
-                    className={`max-w-full max-h-[70vh] object-contain rounded-xl ${
+                    className={`max-w-[80vw] max-h-[80vh] object-contain rounded-xl ${
                       !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
                     }`}
                     onLoadedData={() => setIsModalImageLoaded(true)}
@@ -415,7 +423,7 @@ export function ImageGallery({
               <img
                 src={getModalMediaUrl()}
                 alt={selectedImage.title || `Artwork ${selectedImage.id}`}
-                className={`max-w-full max-h-[70vh] object-contain rounded-xl ${
+                className={`max-w-[80vw] max-h-[80vh] object-contain rounded-xl ${
                   !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
                 }`}
                 onLoad={() => setIsModalImageLoaded(true)}
