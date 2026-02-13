@@ -21,11 +21,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DeletePostButton } from "@/components/admin/delete-post-button";
 import { deletePosts } from "@/app/admin/actions";
 
-interface Post {
+export interface PostItem {
   id: string;
+  postId: string;
   title: string | null;
   thumbnail_url: string | null;
   image_url: string;
@@ -34,65 +34,68 @@ interface Post {
   likes_count: number | null;
   created_at: string;
   deleted_at: string | null;
+  position: number;
 }
 
 interface PostsListProps {
-  posts: Post[];
+  items: PostItem[];
   view: "grid" | "list";
 }
 
-export function PostsList({ posts, view }: PostsListProps) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+export function PostsList({ items, view }: PostsListProps) {
+  // Selection tracks post IDs (deleting a post deletes all its images)
+  const [selectedPosts, setSelectedPosts] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
-  const deletablePosts = posts.filter((p) => !p.deleted_at);
+  const deletablePostIds = [
+    ...new Set(items.filter((i) => !i.deleted_at).map((i) => i.postId)),
+  ];
   const allDeletableSelected =
-    deletablePosts.length > 0 &&
-    deletablePosts.every((p) => selected.has(p.id));
+    deletablePostIds.length > 0 &&
+    deletablePostIds.every((id) => selectedPosts.has(id));
 
-  function toggle(id: string) {
-    setSelected((prev) => {
+  function togglePost(postId: string) {
+    setSelectedPosts((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
       return next;
     });
   }
 
   function toggleAll() {
     if (allDeletableSelected) {
-      setSelected(new Set());
+      setSelectedPosts(new Set());
     } else {
-      setSelected(new Set(deletablePosts.map((p) => p.id)));
+      setSelectedPosts(new Set(deletablePostIds));
     }
   }
 
   function handleBulkDelete() {
-    const ids = Array.from(selected);
-    if (
-      !confirm(`Are you sure you want to delete ${ids.length} post(s)?`)
-    )
+    const ids = Array.from(selectedPosts);
+    if (!confirm(`Are you sure you want to delete ${ids.length} post(s)?`))
       return;
 
     startTransition(async () => {
       await deletePosts(ids);
-      setSelected(new Set());
+      setSelectedPosts(new Set());
     });
   }
 
   return (
     <div>
       {/* Selection bar */}
-      {selected.size > 0 && (
+      {selectedPosts.size > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-bg-elevated border border-border-subtle rounded-xl">
           <button
-            onClick={() => setSelected(new Set())}
+            onClick={() => setSelectedPosts(new Set())}
             className="p-1 rounded-md hover:bg-bg-hover transition-colors text-text-muted hover:text-text-primary"
           >
             <X className="w-4 h-4" />
           </button>
           <span className="text-sm font-medium text-text-primary">
-            {selected.size} selected
+            {selectedPosts.size} post{selectedPosts.size !== 1 ? "s" : ""}{" "}
+            selected
           </span>
           <div className="h-4 w-px bg-border-subtle" />
           <button
@@ -114,14 +117,14 @@ export function PostsList({ posts, view }: PostsListProps) {
       )}
 
       {view === "grid" ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {posts.map((post) => {
-            const isSelected = selected.has(post.id);
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+          {items.map((item) => {
+            const isSelected = selectedPosts.has(item.postId);
             return (
               <div
-                key={post.id}
+                key={item.id}
                 className={`group bg-bg-card border rounded-xl overflow-hidden transition-colors ${
-                  post.deleted_at
+                  item.deleted_at
                     ? "border-error-500/30 opacity-60"
                     : isSelected
                       ? "border-primary-500 ring-1 ring-primary-500/30"
@@ -131,15 +134,15 @@ export function PostsList({ posts, view }: PostsListProps) {
                 {/* Thumbnail */}
                 <div
                   className="aspect-square relative bg-bg-surface cursor-pointer"
-                  onClick={() => !post.deleted_at && toggle(post.id)}
+                  onClick={() => !item.deleted_at && togglePost(item.postId)}
                 >
-                  {post.thumbnail_url || post.image_url ? (
+                  {item.thumbnail_url || item.image_url ? (
                     <Image
-                      src={post.thumbnail_url || post.image_url}
-                      alt={post.title || "Post"}
+                      src={item.thumbnail_url || item.image_url}
+                      alt={item.title || "Post"}
                       fill
                       className="object-cover"
-                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 16vw"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -148,7 +151,7 @@ export function PostsList({ posts, view }: PostsListProps) {
                   )}
 
                   {/* Checkbox overlay */}
-                  {!post.deleted_at && (
+                  {!item.deleted_at && (
                     <div
                       className={`absolute top-2 left-2 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
                         isSelected
@@ -156,12 +159,14 @@ export function PostsList({ posts, view }: PostsListProps) {
                           : "border-white/60 bg-black/30 opacity-0 group-hover:opacity-100"
                       }`}
                     >
-                      {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                      {isSelected && (
+                        <Check className="w-3.5 h-3.5 text-white" />
+                      )}
                     </div>
                   )}
 
                   {/* Media type badge */}
-                  {post.media_type === "video" && (
+                  {item.media_type === "video" && (
                     <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm rounded-md px-2 py-0.5 flex items-center gap-1">
                       <Film className="w-3 h-3 text-white" />
                       <span className="text-xs text-white font-medium">
@@ -169,7 +174,7 @@ export function PostsList({ posts, view }: PostsListProps) {
                       </span>
                     </div>
                   )}
-                  {post.deleted_at && (
+                  {item.deleted_at && (
                     <div className="absolute top-2 right-2 bg-error-500/80 backdrop-blur-sm rounded-md px-2 py-0.5">
                       <span className="text-xs text-white font-medium">
                         Deleted
@@ -179,34 +184,31 @@ export function PostsList({ posts, view }: PostsListProps) {
                 </div>
 
                 {/* Info */}
-                <div className="p-3">
-                  <p className="text-sm font-medium text-text-primary truncate">
-                    {post.title || "Untitled"}
+                <div className="p-2.5">
+                  <p className="text-xs font-medium text-text-primary truncate">
+                    {item.title || "Untitled"}
                   </p>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-3 text-xs text-text-muted">
+                  <div className="flex items-center justify-between mt-1.5">
+                    <div className="flex items-center gap-2 text-xs text-text-muted">
                       <span className="flex items-center gap-1">
                         <Heart className="w-3 h-3" />
-                        {post.likes_count ?? 0}
+                        {item.likes_count ?? 0}
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {new Date(post.created_at).toLocaleDateString("en-US", {
+                        {new Date(item.created_at).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                         })}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Link
-                        href={`/post/${post.short_id || post.id}`}
-                        target="_blank"
-                        className="p-1.5 rounded-md hover:bg-bg-hover transition-colors text-text-muted hover:text-text-primary"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </Link>
-                      {!post.deleted_at && <DeletePostButton postId={post.id} />}
-                    </div>
+                    <Link
+                      href={`/post/${item.short_id || item.postId}`}
+                      target="_blank"
+                      className="p-1 rounded-md hover:bg-bg-hover transition-colors text-text-muted hover:text-text-primary"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -241,17 +243,17 @@ export function PostsList({ posts, view }: PostsListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {posts.map((post) => {
-                const isSelected = selected.has(post.id);
+              {items.map((item) => {
+                const isSelected = selectedPosts.has(item.postId);
                 return (
                   <TableRow
-                    key={post.id}
-                    className={`${post.deleted_at ? "opacity-60" : ""} ${isSelected ? "bg-primary-500/5" : ""}`}
+                    key={item.id}
+                    className={`${item.deleted_at ? "opacity-60" : ""} ${isSelected ? "bg-primary-500/5" : ""}`}
                   >
                     <TableCell>
-                      {!post.deleted_at ? (
+                      {!item.deleted_at ? (
                         <button
-                          onClick={() => toggle(post.id)}
+                          onClick={() => togglePost(item.postId)}
                           className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                             isSelected
                               ? "bg-primary-500 border-primary-500"
@@ -267,11 +269,11 @@ export function PostsList({ posts, view }: PostsListProps) {
                       )}
                     </TableCell>
                     <TableCell>
-                      {post.thumbnail_url || post.image_url ? (
+                      {item.thumbnail_url || item.image_url ? (
                         <div className="w-12 h-12 rounded-lg overflow-hidden bg-bg-surface relative">
                           <Image
-                            src={post.thumbnail_url || post.image_url}
-                            alt={post.title || "Post"}
+                            src={item.thumbnail_url || item.image_url}
+                            alt={item.title || "Post"}
                             fill
                             className="object-cover"
                             sizes="48px"
@@ -286,9 +288,9 @@ export function PostsList({ posts, view }: PostsListProps) {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-text-primary font-medium">
-                          {post.title || "Untitled"}
+                          {item.title || "Untitled"}
                         </span>
-                        {post.deleted_at && (
+                        {item.deleted_at && (
                           <span className="badge bg-error-500/10 text-error-400">
                             Deleted
                           </span>
@@ -297,28 +299,23 @@ export function PostsList({ posts, view }: PostsListProps) {
                     </TableCell>
                     <TableCell>
                       <span className="badge badge-secondary">
-                        {post.media_type || "image"}
+                        {item.media_type || "image"}
                       </span>
                     </TableCell>
                     <TableCell className="text-right text-sm text-text-secondary">
-                      {post.likes_count ?? 0}
+                      {item.likes_count ?? 0}
                     </TableCell>
                     <TableCell className="text-sm text-text-muted">
-                      {new Date(post.created_at).toLocaleDateString()}
+                      {new Date(item.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/post/${post.short_id || post.id}`}
-                          target="_blank"
-                          className="p-2 rounded-lg hover:bg-bg-hover transition-colors text-text-muted hover:text-text-primary"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </Link>
-                        {!post.deleted_at && (
-                          <DeletePostButton postId={post.id} />
-                        )}
-                      </div>
+                      <Link
+                        href={`/post/${item.short_id || item.postId}`}
+                        target="_blank"
+                        className="p-2 rounded-lg hover:bg-bg-hover transition-colors text-text-muted hover:text-text-primary inline-flex"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
                     </TableCell>
                   </TableRow>
                 );
