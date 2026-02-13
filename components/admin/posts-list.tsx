@@ -377,18 +377,27 @@ export function PostsList({ items, view }: PostsListProps) {
               (() => {
                 const playbackId = extractMuxPlaybackId(enlargedImage.url);
                 return playbackId ? (
-                  <MuxPlayer
-                    playbackId={playbackId}
-                    streamType="on-demand"
-                    autoPlay
-                    loop
-                    muted
+                  <div
                     style={{
-                      maxWidth: "90vw",
-                      maxHeight: "90vh",
+                      maxWidth: "80vw",
+                      height: "80vh",
+                      overflow: "hidden",
                       borderRadius: "0.5rem",
                     }}
-                  />
+                  >
+                    <MuxPlayer
+                      playbackId={playbackId}
+                      streamType="on-demand"
+                      autoPlay
+                      loop
+                      muted
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        "--media-object-fit": "contain",
+                      } as React.CSSProperties & Record<`--${string}`, string>}
+                    />
+                  </div>
                 ) : (
                   /* eslint-disable-next-line jsx-a11y/media-has-caption */
                   <video
