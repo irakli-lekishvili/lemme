@@ -17,7 +17,9 @@
     "supabase:start": "npx supabase@latest start",
     "supabase:restart": "npx supabase stop && npx supabase start",
     "email:export": "npx tsx emails/export.ts",
-    "supabase:studio": "open http://127.0.0.1:56323"
+    "supabase:studio": "open http://127.0.0.1:56323",
+    "migrate:dev": "npx supabase@latest migration up",
+    "migrate:prod": "npx supabase@latest db push"
   },
   "dependencies": {
     "@mux/mux-node": "^12.8.1",
