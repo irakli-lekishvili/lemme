@@ -28,7 +28,27 @@ export async function deletePost(postId: string) {
 
   const service = createServiceClient();
 
-  const { error } = await service.from("posts").delete().eq("id", postId);
+  const { error } = await service
+    .from("posts")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", postId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/posts");
+}
+
+export async function deletePosts(postIds: string[]) {
+  await verifyAdmin();
+
+  if (postIds.length === 0) return;
+
+  const service = createServiceClient();
+
+  const { error } = await service
+    .from("posts")
+    .update({ deleted_at: new Date().toISOString() })
+    .in("id", postIds);
 
   if (error) throw new Error(error.message);
 

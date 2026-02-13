@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { ChevronDown, LogOut, Settings, User as UserIcon } from "lucide-react";
+import { ChevronDown, LogOut, Settings, Shield, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -87,6 +87,14 @@ export function UserNav({ user }: { user: User | null }) {
             >
               <Settings className="w-4 h-4" />
               Settings
+            </Link>
+            <Link
+              href="/admin"
+              className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-hover rounded-lg transition-colors"
+              onClick={() => setOpen(false)}
+            >
+              <Shield className="w-4 h-4" />
+              Admin
             </Link>
           </div>
           <div className="p-1 border-t border-border-subtle">
