@@ -364,7 +364,7 @@ export function ImageGallery({
           {/* Main content area */}
           <div
             role="presentation"
-            className="relative max-w-[70vw] max-h-[80vh] animate-in zoom-in-95 duration-200"
+            className="relative max-w-4xl max-h-[80vh] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Skeleton loader */}
@@ -390,10 +390,10 @@ export function ImageGallery({
                     onLoadedData={() => setIsModalImageLoaded(true)}
                     style={{
                       maxWidth: "100%",
-                      maxHeight: "75vh",
+                      maxHeight: "70vh",
                       borderRadius: "0.75rem",
                       "--media-object-fit": "contain",
-                    } as React.CSSProperties}
+                    } as React.CSSProperties & Record<`--${string}`, string>}
                   />
                 ) : (
                   /* eslint-disable-next-line jsx-a11y/media-has-caption */
@@ -403,7 +403,7 @@ export function ImageGallery({
                     loop
                     muted
                     playsInline
-                    className={`max-w-full max-h-[75vh] object-contain rounded-xl ${
+                    className={`max-w-full max-h-[70vh] object-contain rounded-xl ${
                       !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
                     }`}
                     onLoadedData={() => setIsModalImageLoaded(true)}
@@ -415,7 +415,7 @@ export function ImageGallery({
               <img
                 src={getModalMediaUrl()}
                 alt={selectedImage.title || `Artwork ${selectedImage.id}`}
-                className={`max-w-full max-h-[75vh] object-contain rounded-xl ${
+                className={`max-w-full max-h-[70vh] object-contain rounded-xl ${
                   !isModalImageLoaded || isLoadingGroup ? "hidden" : ""
                 }`}
                 onLoad={() => setIsModalImageLoaded(true)}
@@ -776,7 +776,7 @@ function ImageCard({
                         height: "100%",
                         "--media-object-fit": "cover",
                         "--controls": "none",
-                      } as React.CSSProperties}
+                      } as React.CSSProperties & Record<`--${string}`, string>}
                     />
                   ) : (
                     /* eslint-disable-next-line jsx-a11y/media-has-caption */

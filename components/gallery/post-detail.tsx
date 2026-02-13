@@ -107,7 +107,7 @@ export function PostDetail({ post }: PostDetailProps) {
                   style={{
                     width: "100%",
                     "--media-object-fit": "contain",
-                  } as React.CSSProperties}
+                  } as React.CSSProperties & Record<`--${string}`, string>}
                 />
               ) : (
                 /* eslint-disable-next-line jsx-a11y/media-has-caption */
