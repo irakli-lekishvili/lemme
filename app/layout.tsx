@@ -2,6 +2,7 @@ import { Providers } from "@/components/providers/providers";
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -44,6 +45,13 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers userId={user?.id}>{children}</Providers>
+        {process.env.NODE_ENV === "production" && (
+          <Script
+            src="https://cdn.visitors.now/v.js"
+            data-token="95b40f44-a72f-4137-bc42-354ecd5dea64"
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
