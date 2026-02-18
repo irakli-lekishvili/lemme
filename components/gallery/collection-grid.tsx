@@ -46,43 +46,78 @@ function PostCard({
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const videoRef = useRef<any>(null);
-  const [isHovering, setIsHovering] = useState(false);
+  const articleRef = useRef<HTMLElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isVideoMounted, setIsVideoMounted] = useState(false);
   const itemIsVideo = isVideo(item.media_type);
 
   const imageSrc = item.thumbnail_url
     ? getImageUrl(item.thumbnail_url, item.id, "medium")
     : getImageUrl(item.src, item.id, "medium");
 
-  const handleMouseEnter = () => {
-    setIsHovering(true);
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
-  };
+  /* eslint-disable @next/next/no-img-element */
+  const videoThumbnail = item.thumbnail_url
+    ? <img src={item.thumbnail_url} alt="" className="w-full object-cover" />
+    : <div className="aspect-video animate-pulse bg-bg-hover" />;
+  /* eslint-enable @next/next/no-img-element */
 
-  const handleMouseLeave = () => {
-    setIsHovering(false);
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
-  };
+  // Stage 1: mount the player when the post enters 400px proximity
+  useEffect(() => {
+    if (!itemIsVideo) return;
+    const el = articleRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setIsVideoMounted(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "400px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [itemIsVideo]);
+
+  // Stage 2: play when 50%+ visible, pause when it leaves
+  useEffect(() => {
+    if (!itemIsVideo) return;
+    const el = articleRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting) {
+          videoRef.current?.play().catch(() => {});
+          setIsPlaying(true);
+        } else {
+          videoRef.current?.pause();
+          setIsPlaying(false);
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [itemIsVideo]);
 
   return (
-    <article className="group rounded-lg overflow-hidden bg-bg-elevated border border-border-subtle">
+    <article ref={articleRef} className="group rounded-lg overflow-hidden bg-bg-elevated border border-border-subtle">
       <button
         type="button"
         className="relative w-full cursor-pointer"
         onClick={onExpand}
-        onMouseEnter={itemIsVideo ? handleMouseEnter : undefined}
-        onMouseLeave={itemIsVideo ? handleMouseLeave : undefined}
       >
         {itemIsVideo ? (
           (() => {
             const playbackId = extractMuxPlaybackId(item.src);
             return (
-              <>
-                {playbackId ? (
+              <div className="relative">
+                {/* Thumbnail shown until player mounts */}
+                {!isVideoMounted && videoThumbnail}
+                {isVideoMounted && (playbackId ? (
                   <MuxPlayer
                     ref={videoRef}
                     playbackId={playbackId}
@@ -90,7 +125,7 @@ function PostCard({
                     muted
                     loop
                     playsInline
-                    preload="metadata"
+                    preload="auto"
                     style={{
                       width: "100%",
                       "--media-object-fit": "cover",
@@ -106,17 +141,17 @@ function PostCard({
                     muted
                     loop
                     playsInline
-                    preload="metadata"
+                    preload="auto"
                   />
-                )}
-                {!isHovering && (
+                ))}
+                {!isPlaying && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
                       <Play className="w-6 h-6 text-white fill-white ml-0.5" />
                     </div>
                   </div>
                 )}
-              </>
+              </div>
             );
           })()
         ) : (
