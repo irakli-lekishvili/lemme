@@ -145,8 +145,14 @@ function TimelinePost({ post }: { post: TimelineItem }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const videoRef = useRef<any>(null);
   const articleRef = useRef<HTMLElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Lazy-mount the video player only when the post is near the viewport.
+  // Mounting with preload="auto" from the start lets HLS.js buffer and run
+  // ABR before play() is called, which avoids the blurry cold-start issue
+  // that occurs when preload is changed dynamically on a web component.
+  const [isVideoMounted, setIsVideoMounted] = useState(false);
   const isVideo = post.media_type === "video";
 
   // Get the display URL for images
@@ -154,7 +160,35 @@ function TimelinePost({ post }: { post: TimelineItem }) {
     return getImageUrl(post.src, post.id, "medium");
   };
 
-  // Autoplay when post scrolls into view, pause when it leaves
+  // Handle cached images: onLoad fires before React attaches the handler,
+  // so check img.complete on mount as a fallback.
+  useEffect(() => {
+    if (!isVideo && imgRef.current?.complete) {
+      setMediaLoaded(true);
+    }
+  }, [isVideo]);
+
+  // Stage 1: mount the player when the post is 400px away. Once mounted,
+  // it stays mounted (no teardown) so play/pause can be handled via ref.
+  useEffect(() => {
+    if (!isVideo) return;
+    const el = articleRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setIsVideoMounted(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "400px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isVideo]);
+
+  // Stage 2: play when 50%+ visible, pause when it leaves.
   useEffect(() => {
     if (!isVideo) return;
     const el = articleRef.current;
@@ -203,11 +237,24 @@ function TimelinePost({ post }: { post: TimelineItem }) {
           (() => {
             const playbackId = extractMuxPlaybackId(post.src);
             return (
-              <div className="relative">
-                {!mediaLoaded && (
-                  <div className="w-full aspect-video animate-pulse bg-bg-hover" />
+              <div className="relative aspect-video bg-bg-hover">
+                {/* Thumbnail shown until the player mounts */}
+                {!isVideoMounted && (
+                  post.thumbnail_url ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={post.thumbnail_url}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 animate-pulse bg-bg-hover" />
+                  )
                 )}
-                {playbackId ? (
+                {/* Player mounts once (stays mounted) when post enters 400px proximity.
+                    preload="auto" is set from the start so HLS.js can buffer and
+                    run ABR before play() is called — avoids blurry cold-start. */}
+                {isVideoMounted && (playbackId ? (
                   <MuxPlayer
                     ref={videoRef}
                     playbackId={playbackId}
@@ -215,7 +262,7 @@ function TimelinePost({ post }: { post: TimelineItem }) {
                     muted
                     loop
                     playsInline
-                    preload="metadata"
+                    preload="auto"
                     onLoadedData={() => setMediaLoaded(true)}
                     className={`w-full transition-opacity duration-300 ${
                       mediaLoaded ? "opacity-100" : "absolute inset-0 opacity-0"
@@ -238,10 +285,10 @@ function TimelinePost({ post }: { post: TimelineItem }) {
                     muted
                     loop
                     playsInline
-                    preload="metadata"
+                    preload="auto"
                     onLoadedData={() => setMediaLoaded(true)}
                   />
-                )}
+                ))}
                 {/* Play icon overlay - hide when playing */}
                 {!isPlaying && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -260,6 +307,7 @@ function TimelinePost({ post }: { post: TimelineItem }) {
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
+              ref={imgRef}
               src={getDisplayUrl()}
               alt={post.title || `Post ${post.id}`}
               className={`w-full h-auto block transition-opacity duration-300 ${
