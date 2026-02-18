@@ -55,7 +55,8 @@ function PostCard({
   index: number;
   onExpand: () => void;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const videoRef = useRef<any>(null);
   const articleRef = useRef<HTMLElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isVideoMounted, setIsVideoMounted] = useState(false);
@@ -99,7 +100,7 @@ function PostCard({
 
   // Stage 2: play when 50%+ visible, pause when it leaves
   useEffect(() => {
-    if (!itemIsVideo) return;
+    if (!itemIsVideo || !isVideoMounted) return;
     const el = articleRef.current;
     if (!el) return;
 
@@ -118,7 +119,7 @@ function PostCard({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [itemIsVideo]);
+  }, [itemIsVideo, isVideoMounted]);
 
   return (
     <article
@@ -140,7 +141,7 @@ function PostCard({
                 {isVideoMounted &&
                   (playbackId ? (
                     <MuxPlayer
-                      ref={videoRef as React.Ref<HTMLVideoElement>}
+                      ref={videoRef}
                       playbackId={playbackId}
                       streamType="on-demand"
                       muted
