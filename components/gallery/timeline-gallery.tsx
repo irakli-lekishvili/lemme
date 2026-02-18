@@ -139,18 +139,18 @@ function TimelinePost({ post }: { post: TimelineItem }) {
       {/* Media */}
       {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
-        className="relative bg-bg-base aspect-square"
+        className="relative bg-bg-base"
         onMouseEnter={isVideo ? handleMouseEnter : undefined}
         onMouseLeave={isVideo ? handleMouseLeave : undefined}
       >
-        {!mediaLoaded && (
-          <div className="absolute inset-0 animate-pulse bg-bg-hover" />
-        )}
         {isVideo ? (
           (() => {
             const playbackId = extractMuxPlaybackId(post.src);
             return (
-              <>
+              <div className="relative">
+                {!mediaLoaded && (
+                  <div className="w-full aspect-video animate-pulse bg-bg-hover" />
+                )}
                 {playbackId ? (
                   <MuxPlayer
                     ref={videoRef}
@@ -161,14 +161,14 @@ function TimelinePost({ post }: { post: TimelineItem }) {
                     playsInline
                     preload="metadata"
                     onLoadedData={() => setMediaLoaded(true)}
-                    className={`transition-opacity duration-300 ${
-                      mediaLoaded ? "opacity-100" : "opacity-0"
+                    className={`w-full transition-opacity duration-300 ${
+                      mediaLoaded ? "opacity-100" : "absolute inset-0 opacity-0"
                     }`}
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      "--media-object-fit": "cover",
                       "--controls": "none",
+                      display: "block",
+                      width: "100%",
+                      height: "auto",
                     } as React.CSSProperties & Record<`--${string}`, string>}
                   />
                 ) : (
@@ -176,8 +176,8 @@ function TimelinePost({ post }: { post: TimelineItem }) {
                   <video
                     ref={videoRef}
                     src={post.src}
-                    className={`w-full h-full object-cover transition-opacity duration-300 ${
-                      mediaLoaded ? "opacity-100" : "opacity-0"
+                    className={`w-full h-auto block transition-opacity duration-300 ${
+                      mediaLoaded ? "opacity-100" : "absolute inset-0 w-full h-full opacity-0"
                     }`}
                     muted
                     loop
@@ -194,20 +194,25 @@ function TimelinePost({ post }: { post: TimelineItem }) {
                     </div>
                   </div>
                 )}
-              </>
+              </div>
             );
           })()
         ) : (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={getDisplayUrl()}
-            alt={post.title || `Post ${post.id}`}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
-              mediaLoaded ? "opacity-100" : "opacity-0"
-            }`}
-            loading="lazy"
-            onLoad={() => setMediaLoaded(true)}
-          />
+          <>
+            {!mediaLoaded && (
+              <div className="w-full aspect-square animate-pulse bg-bg-hover" />
+            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getDisplayUrl()}
+              alt={post.title || `Post ${post.id}`}
+              className={`w-full h-auto block transition-opacity duration-300 ${
+                mediaLoaded ? "opacity-100" : "absolute inset-0 w-full h-full opacity-0"
+              }`}
+              loading="lazy"
+              onLoad={() => setMediaLoaded(true)}
+            />
+          </>
         )}
       </div>
 
