@@ -237,7 +237,7 @@ function TimelinePost({ post }: { post: TimelineItem }) {
           (() => {
             const playbackId = extractMuxPlaybackId(post.src);
             return (
-              <div className="relative aspect-video bg-bg-hover">
+              <div className="relative h-[80dvh] bg-bg-hover">
                 {/* Thumbnail shown until the player mounts */}
                 {!isVideoMounted && (
                   post.thumbnail_url ? (
@@ -271,7 +271,8 @@ function TimelinePost({ post }: { post: TimelineItem }) {
                       "--controls": "none",
                       display: "block",
                       width: "100%",
-                      height: "auto",
+                      height: "100%",
+                      "--media-object-fit": "cover",
                     } as React.CSSProperties & Record<`--${string}`, string>}
                   />
                 ) : (
@@ -279,7 +280,7 @@ function TimelinePost({ post }: { post: TimelineItem }) {
                   <video
                     ref={videoRef}
                     src={post.src}
-                    className={`w-full h-auto block transition-opacity duration-300 ${
+                    className={`w-full h-full object-cover block transition-opacity duration-300 ${
                       mediaLoaded ? "opacity-100" : "absolute inset-0 w-full h-full opacity-0"
                     }`}
                     muted
@@ -303,14 +304,14 @@ function TimelinePost({ post }: { post: TimelineItem }) {
         ) : (
           <>
             {!mediaLoaded && (
-              <div className="w-full aspect-square animate-pulse bg-bg-hover" />
+              <div className="w-full h-[80dvh] animate-pulse bg-bg-hover" />
             )}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               ref={imgRef}
               src={getDisplayUrl()}
               alt={post.title || `Post ${post.id}`}
-              className={`w-full h-auto block transition-opacity duration-300 ${
+              className={`w-full h-[80dvh] object-cover block transition-opacity duration-300 ${
                 mediaLoaded ? "opacity-100" : "absolute inset-0 w-full h-full opacity-0"
               }`}
               loading="lazy"
