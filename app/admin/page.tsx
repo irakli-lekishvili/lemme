@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
-import { FileImage, Users, Flag } from "lucide-react";
+import { FileImage, FolderOpen, Flag } from "lucide-react";
 import Link from "next/link";
 
 export default async function AdminDashboard() {
@@ -8,12 +8,14 @@ export default async function AdminDashboard() {
   const [
     { count: postsCount },
     { count: reportsCount },
+    { count: collectionsCount },
   ] = await Promise.all([
     service.from("posts").select("*", { count: "exact", head: true }),
     service
       .from("reports")
       .select("*", { count: "exact", head: true })
       .eq("status", "pending"),
+    service.from("collections").select("*", { count: "exact", head: true }),
   ]);
 
   const stats = [
@@ -22,6 +24,12 @@ export default async function AdminDashboard() {
       value: postsCount ?? 0,
       icon: FileImage,
       href: "/admin/posts",
+    },
+    {
+      label: "Collections",
+      value: collectionsCount ?? 0,
+      icon: FolderOpen,
+      href: "/admin/collections",
     },
     {
       label: "Pending Reports",

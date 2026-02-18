@@ -28,6 +28,12 @@ export async function Navbar() {
             >
               Discover
             </Link>
+            <Link
+              href="/collections"
+              className="text-sm font-medium text-text-secondary hover:text-primary-400 transition-colors"
+            >
+              Collections
+            </Link>
             <ViewToggle />
           </div>
         </div>
