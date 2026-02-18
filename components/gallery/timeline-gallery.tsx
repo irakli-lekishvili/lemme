@@ -3,6 +3,7 @@
 import { useBookmarks } from "@/components/providers/bookmarks-provider";
 import { useLikes } from "@/components/providers/likes-provider";
 import { useReports } from "@/components/providers/reports-provider";
+import { loadMorePosts } from "@/app/feed/actions";
 import { ReportModal } from "./report-modal";
 import {
   Bookmark,
@@ -13,7 +14,7 @@ import {
   Play,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import MuxPlayer from "@mux/mux-player-react";
 import { extractMuxPlaybackId } from "@/lib/mux-client";
 import {
@@ -64,24 +65,77 @@ export type TimelineItem = {
 
 interface TimelineGalleryProps {
   posts: TimelineItem[];
+  hasMore?: boolean;
+  category?: string;
 }
 
-export function TimelineGallery({ posts }: TimelineGalleryProps) {
+export function TimelineGallery({
+  posts: initialPosts,
+  hasMore: initialHasMore = false,
+  category,
+}: TimelineGalleryProps) {
+  const [allPosts, setAllPosts] = useState(initialPosts);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const loadingRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const handleLoadMore = useCallback(async () => {
+    if (loadingRef.current || !hasMore) return;
+    loadingRef.current = true;
+    setIsLoading(true);
+    try {
+      const { posts: newPosts, hasMore: newHasMore } = await loadMorePosts(page, category);
+      setAllPosts((prev) => [...prev, ...newPosts]);
+      setHasMore(newHasMore);
+      setPage((prev) => prev + 1);
+    } finally {
+      loadingRef.current = false;
+      setIsLoading(false);
+    }
+  }, [hasMore, page, category]);
+
+  // Auto-trigger load when sentinel scrolls into view
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) handleLoadMore();
+      },
+      { rootMargin: "300px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, handleLoadMore]);
+
   return (
     <div className="max-w-[470px] mx-auto">
       <div className="flex flex-col gap-4">
-        {posts.map((post) => (
+        {allPosts.map((post) => (
           <TimelinePost key={post.id} post={post} />
         ))}
       </div>
 
-      {/* Load More */}
-      {posts.length > 0 && (
-        <div className="flex justify-center mt-8 mb-4">
-          <button type="button" className="btn btn-secondary px-8 py-3">
-            Load More
+      {hasMore && (
+        <div ref={sentinelRef} className="flex justify-center mt-8 mb-4">
+          <button
+            type="button"
+            className="btn btn-secondary px-8 py-3"
+            onClick={handleLoadMore}
+            disabled={isLoading}
+          >
+            {isLoading ? "Loading..." : "Load More"}
           </button>
         </div>
+      )}
+
+      {!hasMore && allPosts.length > 0 && (
+        <p className="text-center text-sm text-text-muted mt-8 mb-4">
+          You&apos;re all caught up
+        </p>
       )}
     </div>
   );
@@ -90,8 +144,9 @@ export function TimelineGallery({ posts }: TimelineGalleryProps) {
 function TimelinePost({ post }: { post: TimelineItem }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const videoRef = useRef<any>(null);
+  const articleRef = useRef<HTMLElement>(null);
   const [mediaLoaded, setMediaLoaded] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const isVideo = post.media_type === "video";
 
   // Get the display URL for images
@@ -99,25 +154,31 @@ function TimelinePost({ post }: { post: TimelineItem }) {
     return getImageUrl(post.src, post.id, "medium");
   };
 
-  const handleMouseEnter = () => {
-    setIsHovering(true);
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {
-        // Autoplay might be blocked, ignore error
-      });
-    }
-  };
+  // Autoplay when post scrolls into view, pause when it leaves
+  useEffect(() => {
+    if (!isVideo) return;
+    const el = articleRef.current;
+    if (!el) return;
 
-  const handleMouseLeave = () => {
-    setIsHovering(false);
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
-  };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting) {
+          videoRef.current?.play().catch(() => {});
+          setIsPlaying(true);
+        } else {
+          videoRef.current?.pause();
+          setIsPlaying(false);
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isVideo]);
 
   return (
-    <article className="bg-bg-elevated border border-border-subtle rounded-lg overflow-hidden">
+    <article ref={articleRef} className="bg-bg-elevated border border-border-subtle rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
@@ -137,12 +198,7 @@ function TimelinePost({ post }: { post: TimelineItem }) {
       </div>
 
       {/* Media */}
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-      <div
-        className="relative bg-bg-base"
-        onMouseEnter={isVideo ? handleMouseEnter : undefined}
-        onMouseLeave={isVideo ? handleMouseLeave : undefined}
-      >
+      <div className="relative bg-bg-base">
         {isVideo ? (
           (() => {
             const playbackId = extractMuxPlaybackId(post.src);
@@ -186,8 +242,8 @@ function TimelinePost({ post }: { post: TimelineItem }) {
                     onLoadedData={() => setMediaLoaded(true)}
                   />
                 )}
-                {/* Play icon overlay - hide when hovering/playing */}
-                {!isHovering && (
+                {/* Play icon overlay - hide when playing */}
+                {!isPlaying && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center">
                       <Play className="w-8 h-8 text-white fill-white ml-1" />
