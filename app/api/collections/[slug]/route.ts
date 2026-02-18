@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 // ---------------------------------------------------------------------------
-// GET /api/collections/:slug — get collection with paginated items
+// GET /api/collections/:slug — get collection with paginated post items
 // Query params: ?page=1&limit=20
 // ---------------------------------------------------------------------------
 
@@ -35,11 +35,11 @@ export async function GET(
     return NextResponse.json({ error: "Collection not found" }, { status: 404 });
   }
 
-  // Fetch paginated items with media details
+  // Fetch paginated items with post details
   const { data: items, error: itemsError, count } = await supabase
     .from("collection_items")
     .select(
-      "position, media:media(id, media_type, thumbnail_url, media_url, title, created_at)",
+      "position, posts(id, title, image_url, thumbnail_url, media_type, short_id, likes_count, created_at)",
       { count: "exact" }
     )
     .eq("collection_id", collection.id)
@@ -58,7 +58,7 @@ export async function GET(
       ...collection,
       item_count: totalItems,
       items: (items || []).map((i) => ({
-        ...i.media,
+        ...i.posts,
         position: i.position,
       })),
     },

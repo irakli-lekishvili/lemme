@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/layout/navbar";
 import { CollectionGrid } from "@/components/gallery/collection-grid";
+import type { ImageItem } from "@/components/gallery/image-gallery";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
@@ -12,18 +13,9 @@ type CollectionDetail = {
   item_count: number;
 };
 
-type MediaItem = {
-  id: string;
-  media_type: string;
-  thumbnail_url: string | null;
-  media_url: string;
-  title: string | null;
-  position: number;
-};
-
 const PAGE_SIZE = 20;
 
-async function getCollection(slug: string): Promise<{ collection: CollectionDetail; items: MediaItem[]; hasMore: boolean } | null> {
+async function getCollection(slug: string): Promise<{ collection: CollectionDetail; items: ImageItem[]; hasMore: boolean } | null> {
   const supabase = await createClient();
 
   const { data: collection, error: collectionError } = await supabase
@@ -36,7 +28,7 @@ async function getCollection(slug: string): Promise<{ collection: CollectionDeta
 
   const { data: items } = await supabase
     .from("collection_items")
-    .select("position, media:media(id, media_type, thumbnail_url, media_url, title)")
+    .select("position, posts(id, image_url, title, short_id, media_type, thumbnail_url, likes_count)")
     .eq("collection_id", collection.id)
     .order("position", { ascending: true })
     .range(0, PAGE_SIZE - 1);
@@ -52,10 +44,26 @@ async function getCollection(slug: string): Promise<{ collection: CollectionDeta
       cover_image_url: collection.cover_image_url,
       item_count: itemCount,
     },
-    items: (items || []).map((i) => ({
-      ...(i.media as unknown as Omit<MediaItem, "position">),
-      position: i.position,
-    })),
+    items: (items || []).map((i) => {
+      const p = i.posts as unknown as {
+        id: string;
+        image_url: string;
+        title: string | null;
+        short_id: string | null;
+        media_type: string | null;
+        thumbnail_url: string | null;
+        likes_count: number;
+      };
+      return {
+        id: p.id,
+        src: p.image_url,
+        title: p.title ?? undefined,
+        short_id: p.short_id,
+        media_type: p.media_type as ImageItem["media_type"],
+        thumbnail_url: p.thumbnail_url,
+        likes: p.likes_count,
+      };
+    }),
     hasMore: (items?.length || 0) === PAGE_SIZE,
   };
 }
@@ -89,7 +97,7 @@ export default async function CollectionPage({
             </p>
           </div>
 
-          {/* Masonry grid */}
+          {/* Grid */}
           <CollectionGrid
             collectionId={collection.id}
             initialItems={items}

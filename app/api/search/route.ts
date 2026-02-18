@@ -21,8 +21,7 @@ function decodeCursor(cursor: string): string | null {
 /**
  * GET /api/search
  *
- * Filter media by tag values. All specified tags must match (AND logic).
- * Returns a cursor-paginated list of matching media with their tags.
+ * Filter post images by tag values. All specified tags must match (AND logic).
  *
  * Query params:
  *   tags    - required; comma-separated tag values e.g. ?tags=blonde,beach
@@ -31,7 +30,7 @@ function decodeCursor(cursor: string): string | null {
  *   type    - filter by media type: 'image' | 'video'
  *
  * Response:
- *   { data: MediaItem[], nextCursor: string | null, totalMatches: number }
+ *   { data: PostImageItem[], nextCursor: string | null, totalMatches: number }
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -66,9 +65,8 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // Resolve IDs matching ALL requested tag values
   const { data: matchingRows, error: tagError } = await supabase.rpc(
-    "filter_media_by_tags",
+    "filter_post_images_by_tags",
     { tag_values: tagValues }
   );
 
@@ -82,19 +80,20 @@ export async function GET(request: NextRequest) {
 
   const matchingIds: string[] = matchingRows.map((r: { id: string }) => r.id);
 
-  // Fetch paginated media for those IDs
   let query = supabase
-    .from("media")
+    .from("post_images")
     .select(`
       id,
+      post_id,
+      image_url,
       media_type,
       thumbnail_url,
-      media_url,
-      title,
       created_at,
-      media_tags (tag_category, tag_value)
+      post_image_tags (tag_category, tag_value),
+      posts!inner (id, title, short_id, deleted_at)
     `)
     .in("id", matchingIds)
+    .is("posts.deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(limit + 1);
 

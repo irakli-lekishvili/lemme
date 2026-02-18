@@ -23,7 +23,7 @@ The `API_SECRET_KEY` is set in `.env.local`.
 
 ### `GET /api/feed`
 
-Paginated feed of AI-tagged media. Sorted by `created_at` descending.
+Paginated feed of post images with AI tags. Sorted by `created_at` descending.
 
 **Query params**
 
@@ -44,16 +44,17 @@ GET /api/feed?limit=20&type=image&tags=blonde,beach
 {
   "data": [
     {
-      "id": "abc123",
+      "id": "uuid",
+      "post_id": "uuid",
       "media_type": "image",
       "thumbnail_url": "https://...",
-      "media_url": "https://...",
-      "title": null,
+      "image_url": "https://...",
       "created_at": "2026-02-18T12:00:00Z",
-      "media_tags": [
+      "post_image_tags": [
         { "tag_category": "hair", "tag_value": "blonde" },
         { "tag_category": "setting", "tag_value": "beach" }
-      ]
+      ],
+      "posts": { "id": "uuid", "title": null, "short_id": "abc12345", "deleted_at": null }
     }
   ],
   "nextCursor": "MjAyNi0wMi0xOFQxMjowMDowMFo"
@@ -66,22 +67,23 @@ Pass `nextCursor` as `?cursor=` in the next request. `null` means no more pages.
 
 ### `GET /api/media/:id`
 
-Single media item with tags grouped by category.
+Single post image with tags grouped by category.
 
 **Example**
 ```
-GET /api/media/abc123
+GET /api/media/uuid
 ```
 
 **Response**
 ```json
 {
-  "id": "abc123",
+  "id": "uuid",
+  "post_id": "uuid",
   "media_type": "image",
   "thumbnail_url": "https://...",
-  "media_url": "https://...",
-  "title": null,
+  "image_url": "https://...",
   "created_at": "2026-02-18T12:00:00Z",
+  "posts": { "id": "uuid", "title": null, "short_id": "abc12345", "description": null },
   "tags": {
     "hair": ["blonde"],
     "body": ["curvy"],
@@ -97,7 +99,7 @@ Returns `404` if the ID does not exist.
 
 ### `GET /api/similar/:id`
 
-Items most similar to the given item using cosine distance on 512-dim CLIP embeddings.
+Post images most similar to the given item using cosine distance on 512-dim CLIP embeddings.
 
 **Query params**
 
@@ -107,7 +109,7 @@ Items most similar to the given item using cosine distance on 512-dim CLIP embed
 
 **Example**
 ```
-GET /api/similar/abc123?limit=6
+GET /api/similar/uuid?limit=6
 ```
 
 **Response**
@@ -115,11 +117,10 @@ GET /api/similar/abc123?limit=6
 {
   "data": [
     {
-      "id": "xyz789",
+      "id": "uuid",
       "media_type": "image",
       "thumbnail_url": "https://...",
-      "media_url": "https://...",
-      "title": null,
+      "image_url": "https://...",
       "created_at": "2026-02-17T09:00:00Z",
       "similarity": 0.94
     }
@@ -133,7 +134,7 @@ GET /api/similar/abc123?limit=6
 
 ### `GET /api/search`
 
-Search media by tag values. All specified tags must be present (AND logic). Cursor-paginated.
+Search post images by tag values. All specified tags must be present (AND logic). Cursor-paginated.
 
 **Query params**
 
@@ -202,7 +203,7 @@ Known categories: `hair`, `ethnicity`, `style`, `body`, `setting`, `clothing`, `
 
 ### `POST /api/media`
 
-Create one item or bulk-import many. Requires bearer token.
+Import one or many items. Creates `posts` + `post_images` records. Requires bearer token.
 
 Accepts either a **single JSON object** or a **JSON array**.
 
@@ -231,7 +232,6 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | string | No | Auto-generated with nanoid if omitted |
 | `media_type` | `image` \| `video` | Yes | |
 | `media_url` | string | Yes | Full URL to the media file |
 | `thumbnail_url` | string | No | |
@@ -240,15 +240,17 @@ Content-Type: application/json
 | `ai_tags` | object | No | `{ category: string[] }` map |
 | `clip_embedding` | number[] | No | Exactly 512 floats |
 
+Each item creates one `post` (with `user_id = null`) and one `post_image`. Tags are stored in `post_image_tags`, embeddings in `post_image_embeddings`.
+
 **Response** `201`
 ```json
 {
   "data": {
-    "id": "V3k9xAbCdEf",
+    "id": "uuid",
+    "post_id": "uuid",
     "media_type": "image",
     "thumbnail_url": "https://...",
-    "media_url": "https://...",
-    "title": null,
+    "image_url": "https://...",
     "created_at": "2026-02-18T12:00:00Z",
     "tags": {
       "hair": ["blonde"],
@@ -267,8 +269,8 @@ Authorization: Bearer <API_SECRET_KEY>
 Content-Type: application/json
 
 [
-  { "id": "sqlite-id-1", "media_type": "image", "media_url": "...", "ai_tags": { ... }, "clip_embedding": [...] },
-  { "id": "sqlite-id-2", "media_type": "video", "media_url": "...", "ai_tags": { ... }, "clip_embedding": [...] }
+  { "media_type": "image", "media_url": "...", "ai_tags": { ... }, "clip_embedding": [...] },
+  { "media_type": "video", "media_url": "...", "ai_tags": { ... }, "clip_embedding": [...] }
 ]
 ```
 
@@ -280,7 +282,7 @@ Content-Type: application/json
 }
 ```
 
-Existing records (matched by `id`) are upserted. Items are processed in batches of 50.
+Items are processed in batches of 50.
 
 ---
 
@@ -290,13 +292,12 @@ Existing records (matched by `id`) are upserted. Items are processed in batches 
 import json, struct, requests, sqlite3
 
 conn = sqlite3.connect("your.db")
-rows = conn.execute("SELECT id, media_type, thumbnail_url, image_url, ai_tags, clip_embedding FROM media").fetchall()
+rows = conn.execute("SELECT media_type, thumbnail_url, image_url, ai_tags, clip_embedding FROM media").fetchall()
 
 items = []
-for id, media_type, thumbnail_url, image_url, ai_tags, clip_blob in rows:
+for media_type, thumbnail_url, image_url, ai_tags, clip_blob in rows:
     embedding = list(struct.unpack(f"{len(clip_blob) // 4}f", clip_blob))
     items.append({
-        "id": id,
         "media_type": media_type,
         "thumbnail_url": thumbnail_url,
         "media_url": image_url,
@@ -317,33 +318,45 @@ print(r.json())  # { "inserted": 220, "errors": [] }
 ## Database schema
 
 ```
-media
-  id            TEXT PRIMARY KEY
-  media_type    TEXT  ('image' | 'video')
-  thumbnail_url TEXT
-  media_url     TEXT  NOT NULL
+posts
+  id            UUID PRIMARY KEY
+  user_id       UUID (nullable — null for imported content)
+  short_id      TEXT UNIQUE
   title         TEXT
+  description   TEXT
+  image_url     TEXT (nullable)
+  storage_path  TEXT (nullable)
+  deleted_at    TIMESTAMPTZ
   created_at    TIMESTAMPTZ
 
-media_tags
+post_images
   id            UUID PRIMARY KEY
-  media_id      TEXT → media.id
-  tag_category  TEXT
-  tag_value     TEXT
-  UNIQUE (media_id, tag_category, tag_value)
+  post_id       UUID → posts.id
+  image_url     TEXT NOT NULL
+  media_type    TEXT  ('image' | 'video')
+  thumbnail_url TEXT
+  storage_path  TEXT (nullable)
+  created_at    TIMESTAMPTZ
 
-media_embeddings
-  media_id      TEXT PRIMARY KEY → media.id
-  embedding     vector(512)       -- HNSW index (cosine)
+post_image_tags
+  id              UUID PRIMARY KEY
+  post_image_id   UUID → post_images.id
+  tag_category    TEXT
+  tag_value       TEXT
+  UNIQUE (post_image_id, tag_category, tag_value)
+
+post_image_embeddings
+  post_image_id   UUID PRIMARY KEY → post_images.id
+  embedding       vector(512)       -- HNSW index (cosine)
 ```
 
 SQL functions (called via `supabase.rpc()`):
 
 | Function | Description |
 |---|---|
-| `filter_media_by_tags(tag_values[])` | AND-filter: returns IDs having all tag values |
-| `find_similar_media(query_media_id, match_limit)` | Cosine ANN search |
-| `get_tag_counts()` | `(category, value, count)` rows for all tags |
+| `filter_post_images_by_tags(tag_values[])` | AND-filter: returns post_image IDs having all tag values |
+| `find_similar_post_images(query_post_image_id, match_limit)` | Cosine ANN search on post_image embeddings |
+| `get_post_image_tag_counts()` | `(category, value, count)` rows for all tags |
 
 ---
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { getCollectionItems, type CollectionMediaItem } from "@/app/actions/collections";
+import { getCollectionItems } from "@/app/actions/collections";
+import type { ImageItem } from "@/components/gallery/image-gallery";
 import { extractMuxPlaybackId } from "@/lib/mux-client";
 import {
   ChevronLeft,
@@ -14,7 +15,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 type ImageVariant = "thumbnail" | "medium" | "large" | "xlarge";
 
-function getImageUrl(src: string, id: string, variant: ImageVariant = "large"): string {
+function getImageUrl(src: string, id: string | number, variant: ImageVariant = "large"): string {
   const accountHash = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
   if (!accountHash) return src;
 
@@ -26,19 +27,19 @@ function getImageUrl(src: string, id: string, variant: ImageVariant = "large"): 
   return src;
 }
 
-function isVideo(mediaType?: string): boolean {
+function isVideo(mediaType?: string | null): boolean {
   return mediaType === "video";
 }
 
 // ---------------------------------------------------------------------------
-// MediaCard — single media item card in the grid
+// PostCard — reuses the same visual style as ImageCard on homepage
 // ---------------------------------------------------------------------------
 
-function MediaCard({
+function PostCard({
   item,
   onExpand,
 }: {
-  item: CollectionMediaItem;
+  item: ImageItem;
   onExpand: () => void;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,7 +49,7 @@ function MediaCard({
 
   const imageSrc = item.thumbnail_url
     ? getImageUrl(item.thumbnail_url, item.id, "medium")
-    : getImageUrl(item.media_url, item.id, "medium");
+    : getImageUrl(item.src, item.id, "medium");
 
   const handleMouseEnter = () => {
     setIsHovering(true);
@@ -80,7 +81,7 @@ function MediaCard({
         >
           {itemIsVideo ? (
             (() => {
-              const playbackId = extractMuxPlaybackId(item.media_url);
+              const playbackId = extractMuxPlaybackId(item.src);
               return (
                 <>
                   {playbackId ? (
@@ -103,7 +104,7 @@ function MediaCard({
                     /* eslint-disable-next-line jsx-a11y/media-has-caption */
                     <video
                       ref={videoRef}
-                      src={item.media_url}
+                      src={item.src}
                       className="w-full h-full object-cover"
                       muted
                       loop
@@ -137,7 +138,7 @@ function MediaCard({
 }
 
 // ---------------------------------------------------------------------------
-// Lightbox — fullscreen media viewer
+// Lightbox
 // ---------------------------------------------------------------------------
 
 function Lightbox({
@@ -148,7 +149,7 @@ function Lightbox({
   onPrev,
   onNext,
 }: {
-  item: CollectionMediaItem;
+  item: ImageItem;
   currentIndex: number;
   totalCount: number;
   onClose: () => void;
@@ -169,10 +170,10 @@ function Lightbox({
   };
 
   const mediaSrc = itemIsVideo
-    ? item.media_url
-    : getImageUrl(item.thumbnail_url || item.media_url, item.id, "xlarge");
+    ? item.src
+    : getImageUrl(item.thumbnail_url || item.src, item.id, "xlarge");
 
-  const playbackId = itemIsVideo ? extractMuxPlaybackId(item.media_url) : null;
+  const playbackId = itemIsVideo ? extractMuxPlaybackId(item.src) : null;
 
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
@@ -183,7 +184,6 @@ function Lightbox({
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
-      {/* Close button */}
       <button
         type="button"
         onClick={onClose}
@@ -192,12 +192,10 @@ function Lightbox({
         <X className="w-6 h-6" />
       </button>
 
-      {/* Counter */}
       <div className="absolute top-4 left-4 text-white/70 text-sm z-10">
         {currentIndex + 1} / {totalCount}
       </div>
 
-      {/* Previous */}
       <button
         type="button"
         onClick={onPrev}
@@ -206,7 +204,6 @@ function Lightbox({
         <ChevronLeft className="w-8 h-8" />
       </button>
 
-      {/* Media */}
       <div className="max-w-[80vw] max-h-[80vh] flex items-center justify-center">
         {itemIsVideo ? (
           playbackId ? (
@@ -224,7 +221,7 @@ function Lightbox({
           ) : (
             /* eslint-disable-next-line jsx-a11y/media-has-caption */
             <video
-              src={item.media_url}
+              src={item.src}
               className="max-w-[80vw] max-h-[80vh] object-contain"
               controls
               autoPlay
@@ -241,7 +238,6 @@ function Lightbox({
         )}
       </div>
 
-      {/* Next */}
       <button
         type="button"
         onClick={onNext}
@@ -254,12 +250,12 @@ function Lightbox({
 }
 
 // ---------------------------------------------------------------------------
-// CollectionGrid — masonry grid with infinite scroll + lightbox
+// CollectionGrid — grid with infinite scroll + lightbox
 // ---------------------------------------------------------------------------
 
 interface CollectionGridProps {
   collectionId: string;
-  initialItems: CollectionMediaItem[];
+  initialItems: ImageItem[];
   initialHasMore: boolean;
 }
 
@@ -286,7 +282,6 @@ export function CollectionGrid({
     });
   }, [isPending, page, collectionId]);
 
-  // Infinite scroll
   useEffect(() => {
     const loader = loaderRef.current;
     if (!loader || !hasMore) return;
@@ -321,7 +316,7 @@ export function CollectionGrid({
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {items.map((item, index) => (
-            <MediaCard
+            <PostCard
               key={item.id}
               item={item}
               onExpand={() => setSelectedIndex(index)}
@@ -330,14 +325,12 @@ export function CollectionGrid({
         </div>
       )}
 
-      {/* Infinite scroll trigger */}
       {hasMore && (
         <div ref={loaderRef} className="flex justify-center py-8">
           <Loader2 className="w-6 h-6 text-text-muted animate-spin" />
         </div>
       )}
 
-      {/* Lightbox */}
       {selectedIndex !== null && items[selectedIndex] && (
         <Lightbox
           item={items[selectedIndex]}

@@ -7,7 +7,6 @@ export const runtime = "nodejs";
  * GET /api/tag-categories
  *
  * Returns all AI tag categories with their distinct values and counts.
- * Useful for building filter/facet UI.
  *
  * Response:
  *   {
@@ -23,13 +22,12 @@ export const runtime = "nodejs";
 export async function GET() {
   const supabase = createServiceClient();
 
-  const { data, error } = await supabase.rpc("get_tag_counts");
+  const { data, error } = await supabase.rpc("get_post_image_tag_counts");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Group flat rows into { name, values[] } objects
   const categoryMap = new Map<string, { value: string; count: number }[]>();
 
   for (const row of data as { tag_category: string; tag_value: string; count: number }[]) {

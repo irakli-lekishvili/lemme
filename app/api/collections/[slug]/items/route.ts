@@ -3,8 +3,8 @@ import { validateBearerToken } from "@/lib/auth/bearer";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // ---------------------------------------------------------------------------
-// POST /api/collections/:slug/items — add items to a collection (admin)
-// Body: { items: [{ media_id, position? }] }
+// POST /api/collections/:slug/items — add posts to a collection (admin)
+// Body: { items: [{ post_id, position? }] }
 // ---------------------------------------------------------------------------
 
 export async function POST(
@@ -16,7 +16,7 @@ export async function POST(
 
   const { slug } = await params;
 
-  let body: { items?: { media_id: string; position?: number }[] };
+  let body: { items?: { post_id: string; position?: number }[] };
   try {
     body = await request.json();
   } catch {
@@ -53,13 +53,13 @@ export async function POST(
 
   const rows = body.items.map((item) => ({
     collection_id: collection.id,
-    media_id: item.media_id,
+    post_id: item.post_id,
     position: item.position ?? nextPosition++,
   }));
 
   const { error: insertError } = await supabase
     .from("collection_items")
-    .upsert(rows, { onConflict: "collection_id,media_id" });
+    .upsert(rows, { onConflict: "collection_id,post_id" });
 
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });

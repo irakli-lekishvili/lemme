@@ -9,7 +9,7 @@ const MAX_LIMIT = 50;
 /**
  * GET /api/similar/:id
  *
- * Returns media items most similar to the given item using
+ * Returns post images most similar to the given item using
  * cosine distance on 512-dim CLIP embeddings (pgvector).
  *
  * Query params:
@@ -32,8 +32,8 @@ export async function GET(
 
   const supabase = createServiceClient();
 
-  const { data, error } = await supabase.rpc("find_similar_media", {
-    query_media_id: id,
+  const { data, error } = await supabase.rpc("find_similar_post_images", {
+    query_post_image_id: id,
     match_limit: limit,
   });
 
@@ -42,9 +42,8 @@ export async function GET(
   }
 
   if (!data || data.length === 0) {
-    // Could be missing embedding or non-existent id
     const { count } = await supabase
-      .from("media")
+      .from("post_images")
       .select("id", { count: "exact", head: true })
       .eq("id", id);
 

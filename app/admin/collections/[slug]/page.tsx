@@ -2,13 +2,13 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { notFound } from "next/navigation";
 import { CollectionItemsManager } from "@/components/admin/collection-items-manager";
 
-export type CollectionItem = {
-  media_id: string;
+export type CollectionPostItem = {
+  post_id: string;
   position: number;
-  media_type: string;
-  thumbnail_url: string | null;
-  media_url: string;
   title: string | null;
+  image_url: string;
+  thumbnail_url: string | null;
+  media_type: string | null;
 };
 
 export default async function AdminCollectionDetailPage({
@@ -27,28 +27,28 @@ export default async function AdminCollectionDetailPage({
 
   if (error || !collection) notFound();
 
-  // Fetch current items
+  // Fetch current items with post data
   const { data: items } = await service
     .from("collection_items")
-    .select("media_id, position, media:media(id, media_type, thumbnail_url, media_url, title)")
+    .select("post_id, position, posts(id, title, image_url, thumbnail_url, media_type)")
     .eq("collection_id", collection.id)
     .order("position", { ascending: true });
 
-  const collectionItems: CollectionItem[] = (items || []).map((i) => {
-    const m = i.media as unknown as {
+  const collectionItems: CollectionPostItem[] = (items || []).map((i) => {
+    const p = i.posts as unknown as {
       id: string;
-      media_type: string;
-      thumbnail_url: string | null;
-      media_url: string;
       title: string | null;
+      image_url: string;
+      thumbnail_url: string | null;
+      media_type: string | null;
     };
     return {
-      media_id: m.id,
+      post_id: p.id,
       position: i.position,
-      media_type: m.media_type,
-      thumbnail_url: m.thumbnail_url,
-      media_url: m.media_url,
-      title: m.title,
+      title: p.title,
+      image_url: p.image_url,
+      thumbnail_url: p.thumbnail_url,
+      media_type: p.media_type,
     };
   });
 

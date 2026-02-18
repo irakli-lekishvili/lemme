@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import type { CollectionItem } from "@/app/admin/collections/[slug]/page";
+import type { CollectionPostItem } from "@/app/admin/collections/[slug]/page";
 import {
   addItemsToCollection,
   removeItemFromCollection,
-  searchMedia,
-  type SearchMediaResult,
+  searchPosts,
+  type SearchPostResult,
 } from "@/app/admin/collections/actions";
 import { Loader2, Plus, Search, Trash2, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// Add items panel — search media and add to collection
+// Add items panel — search posts and add to collection
 // ---------------------------------------------------------------------------
 
 function AddItemsPanel({
@@ -22,7 +22,7 @@ function AddItemsPanel({
   onAdded: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchMediaResult[]>([]);
+  const [results, setResults] = useState<SearchPostResult[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isSearching, setIsSearching] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,11 +41,11 @@ function AddItemsPanel({
       setIsSearching(true);
       setError(null);
       try {
-        const res = await searchMedia(query, collectionId);
+        const res = await searchPosts(query, collectionId);
         setResults(res);
       } catch (e) {
         setResults([]);
-        setError(e instanceof Error ? e.message : "Failed to search media");
+        setError(e instanceof Error ? e.message : "Failed to search posts");
       } finally {
         setIsSearching(false);
       }
@@ -84,7 +84,7 @@ function AddItemsPanel({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search media by title or ID..."
+            placeholder="Search posts by title..."
             className="input w-full !pl-10"
           />
         </div>
@@ -115,7 +115,7 @@ function AddItemsPanel({
         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-80 overflow-y-auto">
           {results.map((item) => {
             const isSelected = selected.has(item.id);
-            const src = item.thumbnail_url || item.media_url;
+            const src = item.thumbnail_url || item.image_url;
             return (
               <button
                 key={item.id}
@@ -130,7 +130,7 @@ function AddItemsPanel({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={src}
-                  alt={item.title || item.id}
+                  alt={item.title || "Post"}
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
@@ -158,7 +158,7 @@ function AddItemsPanel({
 
       {!isSearching && !error && results.length === 0 && (
         <p className="text-sm text-text-muted text-center py-4">
-          {query ? "No media found." : "No media available. Import media first via the API."}
+          {query ? "No posts found." : "No posts available to add."}
         </p>
       )}
     </div>
@@ -176,16 +176,16 @@ export function CollectionItemsManager({
 }: {
   collectionId: string;
   collectionSlug: string;
-  items: CollectionItem[];
+  items: CollectionPostItem[];
 }) {
   const [showAdd, setShowAdd] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function handleRemove(mediaId: string) {
-    setRemovingId(mediaId);
+  function handleRemove(postId: string) {
+    setRemovingId(postId);
     startTransition(async () => {
-      await removeItemFromCollection(collectionId, mediaId);
+      await removeItemFromCollection(collectionId, postId);
       setRemovingId(null);
     });
   }
@@ -196,7 +196,7 @@ export function CollectionItemsManager({
       {showAdd ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-text-secondary">Add Media</h3>
+            <h3 className="text-sm font-medium text-text-secondary">Add Posts</h3>
             <button
               type="button"
               onClick={() => setShowAdd(false)}
@@ -224,20 +224,20 @@ export function CollectionItemsManager({
       {/* Current items grid */}
       {initialItems.length === 0 ? (
         <p className="text-sm text-text-muted py-8 text-center">
-          No items in this collection yet. Use the button above to add media.
+          No items in this collection yet. Use the button above to add posts.
         </p>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
           {initialItems.map((item) => {
-            const src = item.thumbnail_url || item.media_url;
-            const isRemoving = removingId === item.media_id;
+            const src = item.thumbnail_url || item.image_url;
+            const isRemoving = removingId === item.post_id;
             return (
-              <div key={item.media_id} className="group relative">
+              <div key={item.post_id} className="group relative">
                 <div className="aspect-square rounded-lg overflow-hidden bg-bg-elevated">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={src}
-                    alt={item.title || item.media_id}
+                    alt={item.title || "Post"}
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
@@ -245,7 +245,7 @@ export function CollectionItemsManager({
                 {/* Remove button on hover */}
                 <button
                   type="button"
-                  onClick={() => handleRemove(item.media_id)}
+                  onClick={() => handleRemove(item.post_id)}
                   disabled={isPending}
                   className="absolute top-1 right-1 p-1 rounded-md bg-black/70 text-white/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Remove from collection"

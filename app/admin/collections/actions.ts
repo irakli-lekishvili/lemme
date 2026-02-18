@@ -85,11 +85,11 @@ export async function updateCollection(
 
 export async function addItemsToCollection(
   collectionId: string,
-  mediaIds: string[]
+  postIds: string[]
 ) {
   await verifyAdmin();
 
-  if (mediaIds.length === 0) return;
+  if (postIds.length === 0) return;
 
   const service = createServiceClient();
 
@@ -104,15 +104,15 @@ export async function addItemsToCollection(
 
   let nextPosition = (maxRow?.position ?? -1) + 1;
 
-  const rows = mediaIds.map((media_id) => ({
+  const rows = postIds.map((post_id) => ({
     collection_id: collectionId,
-    media_id,
+    post_id,
     position: nextPosition++,
   }));
 
   const { error } = await service
     .from("collection_items")
-    .upsert(rows, { onConflict: "collection_id,media_id" });
+    .upsert(rows, { onConflict: "collection_id,post_id" });
 
   if (error) throw new Error(error.message);
 
@@ -121,7 +121,7 @@ export async function addItemsToCollection(
 
 export async function removeItemFromCollection(
   collectionId: string,
-  mediaId: string
+  postId: string
 ) {
   await verifyAdmin();
 
@@ -131,53 +131,53 @@ export async function removeItemFromCollection(
     .from("collection_items")
     .delete()
     .eq("collection_id", collectionId)
-    .eq("media_id", mediaId);
+    .eq("post_id", postId);
 
   if (error) throw new Error(error.message);
 
   revalidatePath("/admin/collections");
 }
 
-export type SearchMediaResult = {
+export type SearchPostResult = {
   id: string;
-  media_type: string;
-  thumbnail_url: string | null;
-  media_url: string;
   title: string | null;
+  image_url: string;
+  thumbnail_url: string | null;
+  media_type: string | null;
 };
 
-export async function searchMedia(
+export async function searchPosts(
   query: string,
   excludeCollectionId?: string
-): Promise<SearchMediaResult[]> {
+): Promise<SearchPostResult[]> {
   await verifyAdmin();
 
   const service = createServiceClient();
 
-  // Search by title or ID
-  let mediaQuery = service
-    .from("media")
-    .select("id, media_type, thumbnail_url, media_url, title")
+  let postsQuery = service
+    .from("posts")
+    .select("id, title, image_url, thumbnail_url, media_type")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(20);
 
   if (query) {
-    mediaQuery = mediaQuery.or(`title.ilike.%${query}%,id.ilike.%${query}%`);
+    postsQuery = postsQuery.ilike("title", `%${query}%`);
   }
 
-  const { data: media } = await mediaQuery;
-  if (!media || media.length === 0) return [];
+  const { data: posts } = await postsQuery;
+  if (!posts || posts.length === 0) return [];
 
-  // If filtering for a collection, exclude already-added items
+  // Exclude posts already in this collection
   if (excludeCollectionId) {
     const { data: existing } = await service
       .from("collection_items")
-      .select("media_id")
+      .select("post_id")
       .eq("collection_id", excludeCollectionId);
 
-    const existingIds = new Set((existing || []).map((e) => e.media_id));
-    return media.filter((m) => !existingIds.has(m.id));
+    const existingIds = new Set((existing || []).map((e) => e.post_id));
+    return posts.filter((p) => !existingIds.has(p.id));
   }
 
-  return media;
+  return posts;
 }

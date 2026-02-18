@@ -6,13 +6,7 @@ export const runtime = "nodejs";
 /**
  * GET /api/media/:id
  *
- * Returns a single AI-tagged media item with its tags grouped by category.
- *
- * Response:
- *   {
- *     id, media_type, thumbnail_url, media_url, title, created_at,
- *     tags: { hair: ["blonde"], body: ["curvy"], ... }
- *   }
+ * Returns a single post image with its tags grouped by category.
  */
 export async function GET(
   _request: NextRequest,
@@ -22,15 +16,16 @@ export async function GET(
   const supabase = createServiceClient();
 
   const { data, error } = await supabase
-    .from("media")
+    .from("post_images")
     .select(`
       id,
+      post_id,
+      image_url,
       media_type,
       thumbnail_url,
-      media_url,
-      title,
       created_at,
-      media_tags (tag_category, tag_value)
+      post_image_tags (tag_category, tag_value),
+      posts (id, title, short_id, description)
     `)
     .eq("id", id)
     .single();
@@ -39,12 +34,11 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Reshape flat tag rows into { category: [values] } map
   const tags: Record<string, string[]> = {};
-  for (const { tag_category, tag_value } of data.media_tags as { tag_category: string; tag_value: string }[]) {
+  for (const { tag_category, tag_value } of data.post_image_tags as { tag_category: string; tag_value: string }[]) {
     if (!tags[tag_category]) tags[tag_category] = [];
     tags[tag_category].push(tag_value);
   }
 
-  return NextResponse.json({ ...data, media_tags: undefined, tags });
+  return NextResponse.json({ ...data, post_image_tags: undefined, tags });
 }
