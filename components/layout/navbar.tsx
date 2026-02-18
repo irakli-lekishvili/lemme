@@ -28,18 +28,6 @@ export async function Navbar() {
           </div>
         </div>
 
-        {/* Center: Search */}
-        <div className="flex-1 max-w-xl mx-8 hidden lg:block">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="input !pl-12 py-2.5 bg-bg-elevated"
-            />
-          </div>
-        </div>
-
         {/* Right: Actions */}
         <div className="flex items-center gap-3">
           {user && (
