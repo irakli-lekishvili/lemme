@@ -1,21 +1,32 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { getCollectionItems } from "@/app/actions/collections";
-import type { ImageItem } from "@/components/gallery/image-gallery";
-import { extractMuxPlaybackId } from "@/lib/mux-client";
+import MuxPlayer from "@mux/mux-player-react";
 import {
   ChevronLeft,
   ChevronRight,
+  Forward,
+  Heart,
   Loader2,
   Play,
   X,
 } from "lucide-react";
-import MuxPlayer from "@mux/mux-player-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { getCollectionItems } from "@/app/actions/collections";
+import type { ImageItem } from "@/components/gallery/image-gallery";
+import { useBookmarks } from "@/components/providers/bookmarks-provider";
+import { useLikes } from "@/components/providers/likes-provider";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { extractMuxPlaybackId } from "@/lib/mux-client";
 
 type ImageVariant = "thumbnail" | "medium" | "large" | "xlarge";
 
-function getImageUrl(src: string, id: string | number, variant: ImageVariant = "large"): string {
+function getImageUrl(src: string, variant: ImageVariant = "large"): string {
   const accountHash = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_HASH;
   if (!accountHash) return src;
 
@@ -44,22 +55,28 @@ function PostCard({
   index: number;
   onExpand: () => void;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const videoRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const articleRef = useRef<HTMLElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isVideoMounted, setIsVideoMounted] = useState(false);
   const itemIsVideo = isVideo(item.media_type);
 
   const imageSrc = item.thumbnail_url
-    ? getImageUrl(item.thumbnail_url, item.id, "medium")
-    : getImageUrl(item.src, item.id, "medium");
+    ? getImageUrl(item.thumbnail_url, "medium")
+    : getImageUrl(item.src, "medium");
 
-  /* eslint-disable @next/next/no-img-element */
-  const videoThumbnail = item.thumbnail_url
-    ? <img src={item.thumbnail_url} alt="" className="w-full object-cover" />
-    : <div className="aspect-video animate-pulse bg-bg-hover" />;
-  /* eslint-enable @next/next/no-img-element */
+  const thumbnailImg = (
+    <img
+      src={item.thumbnail_url ?? ""}
+      alt=""
+      className="w-full object-cover h-[calc(100dvh-30rem)]"
+    />
+  );
+  const videoThumbnail = item.thumbnail_url ? (
+    thumbnailImg
+  ) : (
+    <div className="h-[calc(100dvh-30rem)] animate-pulse bg-bg-hover" />
+  );
 
   // Stage 1: mount the player when the post enters 400px proximity
   useEffect(() => {
@@ -74,7 +91,7 @@ function PostCard({
           observer.disconnect();
         }
       },
-      { rootMargin: "400px", threshold: 0 }
+      { rootMargin: "400px", threshold: 0 },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -97,14 +114,17 @@ function PostCard({
           setIsPlaying(false);
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.5 },
     );
     observer.observe(el);
     return () => observer.disconnect();
   }, [itemIsVideo]);
 
   return (
-    <article ref={articleRef} className="group rounded-lg overflow-hidden bg-bg-elevated border border-border-subtle">
+    <article
+      ref={articleRef}
+      className="group rounded-lg overflow-hidden bg-bg-elevated border border-border-subtle"
+    >
       <button
         type="button"
         className="relative w-full cursor-pointer"
@@ -114,36 +134,40 @@ function PostCard({
           (() => {
             const playbackId = extractMuxPlaybackId(item.src);
             return (
-              <div className="relative">
+              <div className="relative h-[calc(100dvh-30rem)] flex flex-col justify-center bg-black">
                 {/* Thumbnail shown until player mounts */}
                 {!isVideoMounted && videoThumbnail}
-                {isVideoMounted && (playbackId ? (
-                  <MuxPlayer
-                    ref={videoRef}
-                    playbackId={playbackId}
-                    streamType="on-demand"
-                    muted
-                    loop
-                    playsInline
-                    preload="auto"
-                    style={{
-                      width: "100%",
-                      "--media-object-fit": "cover",
-                      "--controls": "none",
-                    } as React.CSSProperties & Record<`--${string}`, string>}
-                  />
-                ) : (
-                  /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                  <video
-                    ref={videoRef}
-                    src={item.src}
-                    className="w-full object-cover"
-                    muted
-                    loop
-                    playsInline
-                    preload="auto"
-                  />
-                ))}
+                {isVideoMounted &&
+                  (playbackId ? (
+                    <MuxPlayer
+                      ref={videoRef as React.Ref<HTMLVideoElement>}
+                      playbackId={playbackId}
+                      streamType="on-demand"
+                      muted
+                      loop
+                      playsInline
+                      preload="auto"
+                      style={
+                        {
+                          width: "100%",
+                          "--media-object-fit": "cover",
+                          "--controls": "none",
+                        } as React.CSSProperties & Record<`--${string}`, string>
+                      }
+                    />
+                  ) : (
+                    <video
+                      ref={videoRef}
+                      src={item.src}
+                      className="w-full object-cover"
+                      muted
+                      loop
+                      playsInline
+                      preload="auto"
+                    >
+                      <track kind="captions" />
+                    </video>
+                  ))}
                 {!isPlaying && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
@@ -155,21 +179,34 @@ function PostCard({
             );
           })()
         ) : (
-          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={imageSrc}
             alt={item.title || "Collection item"}
-            className="w-full object-cover"
+            className="w-full object-cover h-[calc(100dvh-30rem)]"
             loading={index < 3 ? "eager" : "lazy"}
           />
         )}
       </button>
 
+      {/* Actions */}
+      <div className="px-4 pt-3">
+        <div className="flex items-center gap-4">
+          <LikeButton postId={String(item.id)} />
+          <ShareButton postId={item.short_id || String(item.id)} />
+        </div>
+      </div>
+
+      {/* Like count */}
+      <div className="px-4 pt-2">
+        <LikeCount postId={String(item.id)} initialLikes={item.likes} />
+      </div>
+
       {item.title && (
-        <div className="px-4 py-3">
+        <div className="px-4 pt-2 pb-4">
           <p className="text-sm text-text-secondary">{item.title}</p>
         </div>
       )}
+      {!item.title && <div className="pb-2" />}
     </article>
   );
 }
@@ -198,7 +235,7 @@ function Lightbox({
 
   useEffect(() => {
     modalRef.current?.focus();
-  }, [item]);
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") onClose();
@@ -208,18 +245,21 @@ function Lightbox({
 
   const mediaSrc = itemIsVideo
     ? item.src
-    : getImageUrl(item.thumbnail_url || item.src, item.id, "xlarge");
+    : getImageUrl(item.thumbnail_url || item.src, "xlarge");
 
   const playbackId = itemIsVideo ? extractMuxPlaybackId(item.src) : null;
 
   return (
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       ref={modalRef}
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       onKeyDown={handleKeyDown}
-      tabIndex={0}
+      tabIndex={-1}
     >
       <button
         type="button"
@@ -236,7 +276,10 @@ function Lightbox({
       {currentIndex > 0 && (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPrev();
+          }}
           className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white transition-colors z-10"
         >
           <ChevronLeft className="w-8 h-8" />
@@ -251,24 +294,26 @@ function Lightbox({
               streamType="on-demand"
               autoPlay
               playsInline
-              style={{
-                maxWidth: "80vw",
-                maxHeight: "80vh",
-                "--media-object-fit": "contain",
-              } as React.CSSProperties & Record<`--${string}`, string>}
+              style={
+                {
+                  maxWidth: "80vw",
+                  maxHeight: "80vh",
+                  "--media-object-fit": "contain",
+                } as React.CSSProperties & Record<`--${string}`, string>
+              }
             />
           ) : (
-            /* eslint-disable-next-line jsx-a11y/media-has-caption */
             <video
               src={item.src}
               className="max-w-[80vw] max-h-[80vh] object-contain"
               controls
               autoPlay
               playsInline
-            />
+            >
+              <track kind="captions" />
+            </video>
           )
         ) : (
-          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={mediaSrc}
             alt={item.title || "Collection item"}
@@ -280,7 +325,10 @@ function Lightbox({
       {currentIndex < totalCount - 1 && (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onNext();
+          }}
           className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white transition-colors z-10"
         >
           <ChevronRight className="w-8 h-8" />
@@ -316,7 +364,10 @@ export function CollectionGrid({
     if (isPending) return;
     startTransition(async () => {
       const nextPage = page + 1;
-      const { items: newItems, hasMore: more } = await getCollectionItems(collectionId, nextPage);
+      const { items: newItems, hasMore: more } = await getCollectionItems(
+        collectionId,
+        nextPage,
+      );
       setItems((prev) => [...prev, ...newItems]);
       setPage(nextPage);
       setHasMore(more);
@@ -331,7 +382,7 @@ export function CollectionGrid({
       (entries) => {
         if (entries[0].isIntersecting) loadMore();
       },
-      { threshold: 0.1, rootMargin: "100px" }
+      { threshold: 0.1, rootMargin: "100px" },
     );
 
     observer.observe(loader);
@@ -353,7 +404,9 @@ export function CollectionGrid({
   return (
     <>
       {items.length === 0 ? (
-        <p className="text-center text-text-muted py-20">This collection is empty.</p>
+        <p className="text-center text-text-muted py-20">
+          This collection is empty.
+        </p>
       ) : (
         <div className="flex flex-col gap-5">
           {items.map((item, index) => (
@@ -384,5 +437,77 @@ export function CollectionGrid({
         />
       )}
     </>
+  );
+}
+
+function LikeButton({ postId }: { postId: string }) {
+  const { isAuthenticated } = useBookmarks();
+  const { isLiked, toggleLike } = useLikes();
+  const router = useRouter();
+  const liked = isLiked(postId);
+
+  return (
+    <button
+      type="button"
+      className="p-1 hover:opacity-70 transition-opacity"
+      onClick={() => {
+        if (!isAuthenticated) {
+          router.push("/login");
+          return;
+        }
+        toggleLike(postId);
+      }}
+      aria-label={liked ? "Unlike" : "Like"}
+    >
+      <Heart
+        className={`w-6 h-6 transition-colors ${
+          liked ? "fill-primary-500 text-primary-500" : "text-text-primary"
+        }`}
+      />
+    </button>
+  );
+}
+
+function LikeCount({
+  postId,
+  initialLikes,
+}: {
+  postId: string;
+  initialLikes: number;
+}) {
+  const { getLikeCount } = useLikes();
+  const count = getLikeCount(postId, initialLikes);
+  if (count === 0) return null;
+  return (
+    <p className="text-sm font-semibold text-text-primary">
+      {count.toLocaleString()} like{count !== 1 ? "s" : ""}
+    </p>
+  );
+}
+
+function ShareButton({ postId }: { postId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const url = `${window.location.origin}/post/${postId}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Tooltip open={copied}>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="p-1 hover:opacity-70 transition-opacity"
+          onClick={handleCopy}
+          aria-label="Copy link"
+        >
+          <Forward className="w-6 h-6 text-text-primary" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>Copied!</TooltipContent>
+    </Tooltip>
   );
 }

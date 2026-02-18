@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Bookmark, Search } from "lucide-react";
 import Link from "next/link";
 import { UserNav } from "../auth/user-nav";
+import { NavLinks } from "./nav-links";
 import { ViewToggle } from "./view-toggle";
 
 export async function Navbar() {
@@ -22,18 +23,7 @@ export async function Navbar() {
             LEMME<span className="text-primary-500">.</span>LOVE
           </Link>
           <div className="hidden md:flex items-center gap-6">
-            <Link
-              href="/"
-              className="text-sm font-medium text-text-primary hover:text-primary-400 transition-colors"
-            >
-              Discover
-            </Link>
-            <Link
-              href="/collections"
-              className="text-sm font-medium text-text-secondary hover:text-primary-400 transition-colors"
-            >
-              Collections
-            </Link>
+            <NavLinks />
             <ViewToggle />
           </div>
         </div>
