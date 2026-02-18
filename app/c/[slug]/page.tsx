@@ -3,6 +3,8 @@ import { CollectionGrid } from "@/components/gallery/collection-grid";
 import type { ImageItem } from "@/components/gallery/image-gallery";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 type CollectionDetail = {
   id: string;
@@ -84,20 +86,33 @@ export default async function CollectionPage({
     <div className="min-h-screen bg-bg-base">
       <Navbar />
 
-      <main className="pt-24 pb-12">
-        <div className="max-w-[1800px] mx-auto px-6">
+      <main className="pt-24 pb-16">
+        <div className="max-w-[540px] mx-auto px-4">
+          {/* Back link */}
+          <Link
+            href="/collections"
+            className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-secondary transition-colors mb-8"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Collections
+          </Link>
+
           {/* Collection header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-text-primary">{collection.name}</h1>
+          <div className="mb-10 text-center">
+            <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+              {collection.name}
+            </h1>
             {collection.description && (
-              <p className="mt-2 text-text-secondary max-w-2xl">{collection.description}</p>
+              <p className="mt-2 text-sm text-text-secondary">
+                {collection.description}
+              </p>
             )}
-            <p className="mt-1 text-sm text-text-muted">
+            <p className="mt-1.5 text-xs text-text-muted">
               {collection.item_count} {collection.item_count === 1 ? "item" : "items"}
             </p>
           </div>
 
-          {/* Grid */}
+          {/* Feed */}
           <CollectionGrid
             collectionId={collection.id}
             initialItems={items}
@@ -105,14 +120,6 @@ export default async function CollectionPage({
           />
         </div>
       </main>
-
-      <footer className="border-t border-border-subtle py-8">
-        <div className="max-w-[1800px] mx-auto px-6">
-          <p className="text-sm text-text-muted text-center">
-            &copy; {new Date().getFullYear()} Lemme.Love. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

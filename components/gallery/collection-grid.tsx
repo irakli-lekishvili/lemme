@@ -32,14 +32,16 @@ function isVideo(mediaType?: string | null): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// PostCard — reuses the same visual style as ImageCard on homepage
+// PostCard — Tumblr-style card
 // ---------------------------------------------------------------------------
 
 function PostCard({
   item,
+  index,
   onExpand,
 }: {
   item: ImageItem;
+  index: number;
   onExpand: () => void;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,73 +69,73 @@ function PostCard({
   };
 
   return (
-    <div className="group">
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-      <div
-        className="image-card card-hover relative w-full"
+    <article className="group rounded-lg overflow-hidden bg-bg-elevated border border-border-subtle">
+      <button
+        type="button"
+        className="relative w-full cursor-pointer"
+        onClick={onExpand}
         onMouseEnter={itemIsVideo ? handleMouseEnter : undefined}
         onMouseLeave={itemIsVideo ? handleMouseLeave : undefined}
       >
-        <button
-          type="button"
-          className="aspect-square bg-bg-base cursor-pointer w-full"
-          onClick={onExpand}
-        >
-          {itemIsVideo ? (
-            (() => {
-              const playbackId = extractMuxPlaybackId(item.src);
-              return (
-                <>
-                  {playbackId ? (
-                    <MuxPlayer
-                      ref={videoRef}
-                      playbackId={playbackId}
-                      streamType="on-demand"
-                      muted
-                      loop
-                      playsInline
-                      preload="metadata"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        "--media-object-fit": "cover",
-                        "--controls": "none",
-                      } as React.CSSProperties & Record<`--${string}`, string>}
-                    />
-                  ) : (
-                    /* eslint-disable-next-line jsx-a11y/media-has-caption */
-                    <video
-                      ref={videoRef}
-                      src={item.src}
-                      className="w-full h-full object-cover"
-                      muted
-                      loop
-                      playsInline
-                      preload="metadata"
-                    />
-                  )}
-                  {!isHovering && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                        <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-                      </div>
+        {itemIsVideo ? (
+          (() => {
+            const playbackId = extractMuxPlaybackId(item.src);
+            return (
+              <>
+                {playbackId ? (
+                  <MuxPlayer
+                    ref={videoRef}
+                    playbackId={playbackId}
+                    streamType="on-demand"
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    style={{
+                      width: "100%",
+                      "--media-object-fit": "cover",
+                      "--controls": "none",
+                    } as React.CSSProperties & Record<`--${string}`, string>}
+                  />
+                ) : (
+                  /* eslint-disable-next-line jsx-a11y/media-has-caption */
+                  <video
+                    ref={videoRef}
+                    src={item.src}
+                    className="w-full object-cover"
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                  />
+                )}
+                {!isHovering && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                      <Play className="w-6 h-6 text-white fill-white ml-0.5" />
                     </div>
-                  )}
-                </>
-              );
-            })()
-          ) : (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={imageSrc}
-              alt={item.title || "Collection item"}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          )}
-        </button>
-      </div>
-    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={imageSrc}
+            alt={item.title || "Collection item"}
+            className="w-full object-cover"
+            loading={index < 3 ? "eager" : "lazy"}
+          />
+        )}
+      </button>
+
+      {item.title && (
+        <div className="px-4 py-3">
+          <p className="text-sm text-text-secondary">{item.title}</p>
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -196,13 +198,15 @@ function Lightbox({
         {currentIndex + 1} / {totalCount}
       </div>
 
-      <button
-        type="button"
-        onClick={onPrev}
-        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white transition-colors z-10"
-      >
-        <ChevronLeft className="w-8 h-8" />
-      </button>
+      {currentIndex > 0 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onPrev(); }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white transition-colors z-10"
+        >
+          <ChevronLeft className="w-8 h-8" />
+        </button>
+      )}
 
       <div className="max-w-[80vw] max-h-[80vh] flex items-center justify-center">
         {itemIsVideo ? (
@@ -238,19 +242,21 @@ function Lightbox({
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={onNext}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white transition-colors z-10"
-      >
-        <ChevronRight className="w-8 h-8" />
-      </button>
+      {currentIndex < totalCount - 1 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white transition-colors z-10"
+        >
+          <ChevronRight className="w-8 h-8" />
+        </button>
+      )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// CollectionGrid — grid with infinite scroll + lightbox
+// CollectionGrid — Tumblr-style vertical feed
 // ---------------------------------------------------------------------------
 
 interface CollectionGridProps {
@@ -314,11 +320,12 @@ export function CollectionGrid({
       {items.length === 0 ? (
         <p className="text-center text-text-muted py-20">This collection is empty.</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="flex flex-col gap-5">
           {items.map((item, index) => (
             <PostCard
               key={item.id}
               item={item}
+              index={index}
               onExpand={() => setSelectedIndex(index)}
             />
           ))}
@@ -326,8 +333,8 @@ export function CollectionGrid({
       )}
 
       {hasMore && (
-        <div ref={loaderRef} className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 text-text-muted animate-spin" />
+        <div ref={loaderRef} className="flex justify-center py-10">
+          <Loader2 className="w-5 h-5 text-text-muted animate-spin" />
         </div>
       )}
 
