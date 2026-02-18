@@ -70,13 +70,13 @@ function PostCard({
     <img
       src={item.thumbnail_url ?? ""}
       alt=""
-      className="w-full object-cover h-[calc(100dvh-30rem)]"
+      className="w-full h-auto max-h-[90dvh] object-contain"
     />
   );
   const videoThumbnail = item.thumbnail_url ? (
     thumbnailImg
   ) : (
-    <div className="h-[calc(100dvh-30rem)] animate-pulse bg-bg-hover" />
+    <div className="aspect-video animate-pulse bg-bg-hover" />
   );
 
   // Stage 1: mount the player when the post enters 400px proximity
@@ -135,7 +135,7 @@ function PostCard({
           (() => {
             const playbackId = extractMuxPlaybackId(item.src);
             return (
-              <div className="relative h-[calc(100dvh-30rem)] flex flex-col justify-center bg-black">
+              <div className="relative w-full flex flex-col justify-center bg-black overflow-hidden">
                 {/* Thumbnail shown until player mounts */}
                 {!isVideoMounted && videoThumbnail}
                 {isVideoMounted &&
@@ -151,7 +151,8 @@ function PostCard({
                       style={
                         {
                           width: "100%",
-                          "--media-object-fit": "cover",
+                          maxHeight: "90dvh",
+                          "--media-object-fit": "contain",
                           "--controls": "none",
                         } as React.CSSProperties & Record<`--${string}`, string>
                       }
@@ -160,7 +161,7 @@ function PostCard({
                     <video
                       ref={videoRef}
                       src={item.src}
-                      className="w-full object-cover"
+                      className="w-full max-h-[90dvh] object-contain"
                       muted
                       loop
                       playsInline
@@ -183,7 +184,7 @@ function PostCard({
           <img
             src={imageSrc}
             alt={item.title || "Collection item"}
-            className="w-full object-cover h-[calc(100dvh-30rem)]"
+            className="w-full h-auto max-h-[90dvh] object-contain"
             loading={index < 3 ? "eager" : "lazy"}
           />
         )}
