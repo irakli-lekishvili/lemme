@@ -1,0 +1,1 @@
+ALTER TABLE posts ADD COLUMN civit_id TEXT UNIQUE;

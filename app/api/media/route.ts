@@ -16,6 +16,8 @@ interface ImportItem {
   media_url: string;
   title?: string | null;
   created_at?: string | null;
+  /** CivitAI content ID */
+  civit_id?: string | null;
   /** AI-generated tags: { hair: ["blonde"], body: ["curvy"], ... } */
   ai_tags?: Record<string, string[]> | null;
   /** 512-dim CLIP embedding as a plain number array */
@@ -41,6 +43,7 @@ async function insertBatch(
     media_type: item.media_type,
     thumbnail_url: item.thumbnail_url ?? null,
     short_id: nanoid(8),
+    civit_id: item.civit_id ?? null,
     ...(item.created_at ? { created_at: item.created_at } : {}),
   }));
 
@@ -242,6 +245,7 @@ export async function GET(request: NextRequest) {
       media_type,
       thumbnail_url,
       short_id,
+      civit_id,
       likes_count,
       created_at,
       updated_at,
